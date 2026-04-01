@@ -1,0 +1,18 @@
+{
+  "branch": "main",
+  "depends_recipe": "",
+  "description_control": "Chefkoch Plugin",
+  "description_recipe": "Chefkoch Plugin",
+  "history_source_dir": "Chefkoch",
+  "internal_package_name": "enigma2-plugin-extensions-chefkoch",
+  "module_dir_name": "Chefkoch",
+  "output_subdir": "Chefkoch",
+  "package_name": "enigma2-plugin-extensions-chefkoch",
+  "plugin_src_rel": "Chefkoch",
+  "python_package": "Chefkoch",
+  "rdepends_recipe": "",
+  "replaces": "",
+  "repo_name": "Chefkoch",
+  "rrecommends": "",
+  "rreplaces": ""
+}
