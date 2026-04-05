@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
-# Plugin still runs under Pyton 2 and Python 3
-from __future__ import print_function, absolute_import, division
+from __future__ import absolute_import, division
 
 # PYTHON IMPORTS
 from base64 import b64encode, b64decode
@@ -14,10 +13,10 @@ from requests import get, exceptions
 from PIL import Image
 from smtplib import SMTP, SMTPResponseException
 from shutil import copy
-from six import ensure_str, ensure_binary, PY3
-from six.moves.email_mime_multipart import MIMEMultipart
-from six.moves.email_mime_text import MIMEText
-from six.moves.email_mime_image import MIMEImage
+from six import ensure_str, ensure_binary
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.image import MIMEImage
 from time import strftime
 from twisted.internet.reactor import callInThread
 from xml.etree.ElementTree import tostring, parse
@@ -694,10 +693,7 @@ class CKview(AllScreen):
 		msgText += '\n\nZUBEREITUNG\n%s' % self.REZ['instructions'] if self.REZ else ""
 		msgText += '\n%s\nChefkoch.de' % ('_' * 30)
 		if fileExists(ckglobals.PICFILE):
-			if PY3:
-				Image.open(ckglobals.PICFILE).resize((320, 240), Image.LANCZOS).save('/tmp/emailpic.jpg')
-			else:
-				Image.open(ckglobals.PICFILE).resize((320, 240), Image.ANTIALIAS).save('/tmp/emailpic.jpg')
+			Image.open(ckglobals.PICFILE).resize((320, 240), Image.LANCZOS).save('/tmp/emailpic.jpg')
 		mailFrom = ensure_str(config.plugins.chefkoch.mailfrom.value.encode('ascii', 'xmlcharrefreplace'))
 		mailTo = ensure_str(mailTo.encode('ascii', 'xmlcharrefreplace'))
 		mailLogin = ensure_str(config.plugins.chefkoch.login.value.encode('ascii', 'xmlcharrefreplace'))
