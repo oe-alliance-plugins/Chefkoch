@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from __future__ import absolute_import, division
+from __future__ import division
 
 # PYTHON IMPORTS
 from base64 import b64encode, b64decode
@@ -13,7 +13,6 @@ from requests import get, exceptions
 from PIL import Image
 from smtplib import SMTP, SMTPResponseException
 from shutil import copy
-from six import ensure_str, ensure_binary
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
@@ -64,6 +63,18 @@ config.plugins.chefkoch.debuglog = ConfigYesNo(default=False)
 config.plugins.chefkoch.logtofile = ConfigYesNo(default=False)
 
 HIDEFLAG = False
+
+
+def ensure_str(s):
+	if isinstance(s, bytes):
+		return s.decode("utf-8")
+	return s
+
+
+def ensure_binary(s):
+	if isinstance(s, str):
+		return s.encode("utf-8")
+	return s
 
 
 class CKglobals:
