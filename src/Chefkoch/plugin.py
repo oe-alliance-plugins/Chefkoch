@@ -704,7 +704,7 @@ class CKview(AllScreen):
 		msgText += '\n\nZUBEREITUNG\n%s' % self.REZ['instructions'] if self.REZ else ""
 		msgText += '\n%s\nChefkoch.de' % ('_' * 30)
 		if fileExists(ckglobals.PICFILE):
-			Image.open(ckglobals.PICFILE).resize((320, 240), Image.LANCZOS).save('/tmp/emailpic.jpg')
+			Image.open(ckglobals.PICFILE).resize((320, 240), Image.Resampling.LANCZOS).save('/tmp/emailpic.jpg')
 		mailFrom = ensure_str(config.plugins.chefkoch.mailfrom.value.encode('ascii', 'xmlcharrefreplace'))
 		mailTo = ensure_str(mailTo.encode('ascii', 'xmlcharrefreplace'))
 		mailLogin = ensure_str(config.plugins.chefkoch.login.value.encode('ascii', 'xmlcharrefreplace'))
