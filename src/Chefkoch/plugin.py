@@ -137,17 +137,16 @@ class AllScreen(Screen):
 
 	def hideScreen(self):
 		global HIDEFLAG
-		if ckglobals.ALPHA:
-			if HIDEFLAG:
-				HIDEFLAG = False
-				for index in range(40, -1, -1):
-					with open(ckglobals.ALPHA, "w") as f:
-						f.write(f"{int(config.av.osd_ckglobals.ALPHA.value * index / 40):d}")
-			else:
-				HIDEFLAG = True
-				for index in range(41):
-					with open(ckglobals.ALPHA, "w") as f:
-						f.write(f"{int(config.av.osd_ckglobals.ALPHA.value * index / 40):d}")
+		if ckglobals.ALPHA and HIDEFLAG:
+			HIDEFLAG = False
+			for index in range(40, -1, -1):
+				with open(ckglobals.ALPHA, "w") as f:
+					f.write(f"{int(config.av.osd_ckglobals.ALPHA.value * index / 40):d}")
+		elif ckglobals.ALPHA:
+			HIDEFLAG = True
+			for index in range(41):
+				with open(ckglobals.ALPHA, "w") as f:
+					f.write(f"{int(config.av.osd_ckglobals.ALPHA.value * index / 40):d}")
 
 	def PICdownload(self, url, index=None):
 		headers = {"User-Agent": ckglobals.AGENT, "Accept": "application/json"}
@@ -360,7 +359,7 @@ class CKview(AllScreen):
 		self["label_green"].setText("")
 		self["label_yellow"].setText("Suche")
 		self["label_blue"].setText("Ein-/Ausblenden")
-		self["label_rezeptnr"].setText("Rezept Nr. %s" % (self.currItem + 1))
+		self["label_rezeptnr"].setText(f"Rezept Nr. {self.currItem + 1}")
 		self["label_ok"].setText("zum Rezept")
 		self["label_ok"].show()
 		self["label_1-0"].setText("")
@@ -619,48 +618,47 @@ class CKview(AllScreen):
 		return ausgabe
 
 	def ok(self):
-		if HIDEFLAG:
-			if self.current == "menu":
-				self.current = "postview"
-				self.currItem = self["menu"].getSelectedIndex()
-				if self.GRPs:
-					self.showRecipe(self.GRPs[self.currItem].get("id", ""))
-					callInThread(self.fillRecipe)
-			elif self.current == "postview" and self.REZ:
-				if self.picCount == 1:
-					self.session.openWithCallback(self.showPic, CKfullscreen)
-				if self.picCount > 1:
-					self.session.open(CKpicshow, self.titel, self.REZ, self.IMG)
+		if HIDEFLAG and self.current == "menu":
+			self.current = "postview"
+			self.currItem = self["menu"].getSelectedIndex()
+			if self.GRPs:
+				self.showRecipe(self.GRPs[self.currItem].get("id", ""))
+				callInThread(self.fillRecipe)
+		elif HIDEFLAG and self.current == "postview" and self.REZ and self.picCount == 1:
+			self.session.openWithCallback(self.showPic, CKfullscreen)
+		elif HIDEFLAG and self.current == "postview" and self.REZ and self.picCount > 1:
+			self.session.open(CKpicshow, self.titel, self.REZ, self.IMG)
 
 	def red(self):
-		if self.titellist:
-			if self.zufall:
-				name = self.name
-			else:
-				self.currItem = self["menu"].getSelectedIndex()
-				name = self.titellist[self.currItem]
+		if self.titellist and self.zufall:
+			name = self.name
+			self.session.openWithCallback(self.red_return, MessageBox, f"\nRezept '{name}' zu den Favoriten hinzufügen?", MessageBox.TYPE_YESNO, timeout=10, default=True)
+		elif self.titellist:
+			self.currItem = self["menu"].getSelectedIndex()
+			name = self.titellist[self.currItem]
 			self.session.openWithCallback(self.red_return, MessageBox, f"\nRezept '{name}' zu den Favoriten hinzufügen?", MessageBox.TYPE_YESNO, timeout=10, default=True)
 
 	def red_return(self, answer):
-		if answer is True:
-			if self.zufall:
-				data = f"{self.name}:::{self.GRPs[self.currItem].get('id', '')}"
-			else:
-				self.currItem = self["menu"].getSelectedIndex()
-				data = f"{self.titellist[self.currItem]}:::{self.GRPs[self.currItem].get('id', '')}"
+		if answer is True and self.zufall:
+			data = f"{self.name}:::{self.GRPs[self.currItem].get('id', '')}"
+			with open(ckglobals.FAVORITES, "a") as f:
+				f.write(data)
+				f.write(linesep)
+			self.session.open(CKfavoriten)
+		elif answer is True:
+			self.currItem = self["menu"].getSelectedIndex()
+			data = f"{self.titellist[self.currItem]}:::{self.GRPs[self.currItem].get('id', '')}"
 			with open(ckglobals.FAVORITES, "a") as f:
 				f.write(data)
 				f.write(linesep)
 			self.session.open(CKfavoriten)
 
 	def green(self):
-		if self.current == "postview" and self.REZ:
-			if config.plugins.chefkoch.mail.value:
-				mailto = config.plugins.chefkoch.mailto.value.split(",")
-				mailto = [(index.strip(),) for index in mailto]
-				self.session.openWithCallback(self.green_return, ChoiceBox, title="Rezept an folgende E-Mail Adresse senden:", list=mailto)
-			else:
-				self.session.open(MessageBox, "\nDie E-Mail Funktion ist nicht aktiviert. Aktivieren Sie die E-Mail Funktion im Setup des Plugins.", MessageBox.TYPE_INFO, timeout=5, close_on_any_key=True)
+		if self.current == "postview" and self.REZ and config.plugins.chefkoch.mail.value:
+			mailto = [(index.strip(),) for index in config.plugins.chefkoch.mailto.value.split(",")]
+			self.session.openWithCallback(self.green_return, ChoiceBox, title="Rezept an folgende E-Mail Adresse senden:", list=mailto)
+		elif self.current == "postview" and self.REZ:
+			self.session.open(MessageBox, "\nDie E-Mail Funktion ist nicht aktiviert. Aktivieren Sie die E-Mail Funktion im Setup des Plugins.", MessageBox.TYPE_INFO, timeout=5, close_on_any_key=True)
 		if self.current == "menu" and self.sortname:
 			self.sort = (self.sort + 1) % len(self.sortname)
 			self.currItem = 0
@@ -720,7 +718,6 @@ class CKview(AllScreen):
 		if fileExists(ckglobals.PICFILE):
 			Image.open(ckglobals.PICFILE).resize((320, 240), Image.Resampling.LANCZOS).save("/tmp/emailpic.jpg")
 		mailFrom = config.plugins.chefkoch.mailfrom.value
-		mailTo = mailTo
 		mailLogin = config.plugins.chefkoch.login.value
 		mailPassword = b64decode(config.plugins.chefkoch.password.value).decode()
 		mailServer = config.plugins.chefkoch.server.value
@@ -781,20 +778,19 @@ class CKview(AllScreen):
 		if self.current == "menu":
 			self.currItem = self["menu"].getSelectedIndex()
 			offset = self.currItem % ckglobals.LINESPERPAGE
-			if self.currItem + ckglobals.LINESPERPAGE > self.len - 1:
-				if offset > (self.len - 1) % ckglobals.LINESPERPAGE:
-					self.currItem = self.len - 1
-					self["menu"].moveToIndex(self.currItem)  # springe auf letzten Eintrag der letzten Seite
-					self.setPrevIcons(self.currItem - offset)
-				else:
-					self.currItem = offset
-					self["menu"].moveToIndex(self.currItem)  # springe auf gleichen Offset der ersten Seite
-					self.setPrevIcons(0)
+			if self.currItem + ckglobals.LINESPERPAGE > self.len - 1 and offset > (self.len - 1) % ckglobals.LINESPERPAGE:
+				self.currItem = self.len - 1
+				self["menu"].moveToIndex(self.currItem)  # springe auf letzten Eintrag der letzten Seite
+				self.setPrevIcons(self.currItem - offset)
+			elif self.currItem + ckglobals.LINESPERPAGE > self.len - 1:
+				self.currItem = offset
+				self["menu"].moveToIndex(self.currItem)  # springe auf gleichen Offset der ersten Seite
+				self.setPrevIcons(0)
 			else:
 				self.currItem = self.currItem + ckglobals.LINESPERPAGE
 				self["menu"].pageDown()
 				self.setPrevIcons(self.currItem - offset)
-			self["label_rezeptnr"].setText("Rezept Nr. %s" % (self.currItem + 1))
+			self["label_rezeptnr"].setText(f"Rezept Nr. {self.currItem + 1}")
 			self["pageinfo"].setText(f"Seite {int(self.currItem // ckglobals.LINESPERPAGE + 1)} von {self.maxPage}")
 		else:
 			self["textpage"].pageDown()
@@ -804,19 +800,19 @@ class CKview(AllScreen):
 			self.currItem = self["menu"].getSelectedIndex()
 			offset = self.currItem % ckglobals.LINESPERPAGE
 			lasttop = (self.len - 1) // ckglobals.LINESPERPAGE * ckglobals.LINESPERPAGE
-			if self.currItem - ckglobals.LINESPERPAGE < 0:
-				if offset > (self.len - 1) % ckglobals.LINESPERPAGE:
-					self.currItem = self.len - 1
-					self["menu"].moveToIndex(self.currItem)  # springe auf gleichen Offset der vorherigen Seite
-				else:
-					self.currItem = lasttop + offset
-					self["menu"].moveToIndex(self.currItem)  # springe auf letzten Eintrag der letzten Seite
+			if self.currItem - ckglobals.LINESPERPAGE < 0 and offset > (self.len - 1) % ckglobals.LINESPERPAGE:
+				self.currItem = self.len - 1
+				self["menu"].moveToIndex(self.currItem)  # springe auf gleichen Offset der vorherigen Seite
+				self.setPrevIcons(lasttop)
+			elif self.currItem - ckglobals.LINESPERPAGE < 0:
+				self.currItem = lasttop + offset
+				self["menu"].moveToIndex(self.currItem)  # springe auf letzten Eintrag der letzten Seite
 				self.setPrevIcons(lasttop)
 			else:
 				self.currItem = self.currItem - ckglobals.LINESPERPAGE
 				self["menu"].pageUp()
 				self.setPrevIcons(self.currItem - offset)
-			self["label_rezeptnr"].setText("Rezept Nr. %s" % (self.currItem + 1))
+			self["label_rezeptnr"].setText(f"Rezept Nr. {self.currItem + 1}")
 			self["pageinfo"].setText(f"Seite {int(self.currItem // ckglobals.LINESPERPAGE + 1)} von {self.maxPage}")
 		else:
 			self["textpage"].pageUp()
@@ -825,7 +821,7 @@ class CKview(AllScreen):
 		if self.current == "menu":
 			self["menu"].down()
 			self.currItem = self["menu"].getSelectedIndex()
-			self["label_rezeptnr"].setText("Rezept Nr. %s" % (self.currItem + 1))
+			self["label_rezeptnr"].setText(f"Rezept Nr. {self.currItem + 1}")
 			self["pageinfo"].setText(f"Seite {int(self.currItem // ckglobals.LINESPERPAGE + 1)} von {self.maxPage}")
 			if self.currItem == self.len:  # neue Vorschaubilder der ersten Seite anzeigen
 				self.setPrevIcons(0)
@@ -838,7 +834,7 @@ class CKview(AllScreen):
 		if self.current == "menu":
 			self["menu"].up()
 			self.currItem = self["menu"].getSelectedIndex()
-			self["label_rezeptnr"].setText("Rezept Nr. %s" % (self.currItem + 1))
+			self["label_rezeptnr"].setText(f"Rezept Nr. {self.currItem + 1}")
 			self["pageinfo"].setText(f"Seite {int(self.currItem // ckglobals.LINESPERPAGE + 1)} von {self.maxPage}")
 			if self.currItem == self.len - 1:  # neue Vorschaubilder der letzte Seite anzeigen
 				d = self.len % ckglobals.LINESPERPAGE if self.len % ckglobals.LINESPERPAGE != 0 else ckglobals.LINESPERPAGE
@@ -849,16 +845,14 @@ class CKview(AllScreen):
 			self["textpage"].pageUp()
 
 	def gotoPage(self, number):
-		if self.current != "postview":
+		if self.current == "postview" and number == 0:
+			self["textpage"].lastPage()
+		elif self.current == "postview" and number == 1 and self.comment:
+			self.showComments()
+		elif self.current == "postview" and number == 1:
+			self.showRezept()
+		else:
 			self.session.openWithCallback(self.numberEntered, CKgetNumber, number, self.maxPics)
-		elif self.current == "postview":
-			if number == 0:
-				self["textpage"].lastPage()
-			elif number == 1:
-				if self.comment:
-					self.showComments()
-				else:
-					self.showRezept()
 
 	def numberEntered(self, number):
 		if number and number != 0:
@@ -869,7 +863,7 @@ class CKview(AllScreen):
 			self.currItem = (count - 1) * ckglobals.LINESPERPAGE
 			self["menu"].moveToIndex(self.currItem)
 			self.setPrevIcons(self.currItem)
-			self["label_rezeptnr"].setText("Rezept Nr. %s" % (self.currItem + 1))
+			self["label_rezeptnr"].setText(f"Rezept Nr. {self.currItem + 1}")
 			self["pageinfo"].setText(f"Seite {int(self.currItem // ckglobals.LINESPERPAGE + 1)} von {self.maxPage}")
 
 	def setPrevIcons(self, toppos):
@@ -888,13 +882,12 @@ class CKview(AllScreen):
 		if self.current == "menu":
 			self.currItem = self["menu"].getSelectedIndex()
 			self.session.open(CKfavoriten, False)
+		elif self.current == "postview" and self.KOMlen > 0 and self.comment:
+			self.comment = False
+			self.showRezept()
 		elif self.current == "postview" and self.KOMlen > 0:
-			if self.comment:
-				self.comment = False
-				self.showRezept()
-			else:
-				self.comment = True
-				self.showComments()
+			self.comment = True
+			self.showComments()
 
 	def showComments(self):  # zeige leere Kommentaransicht
 		self["label_yellow"].setText("Beschreibung einblenden")
@@ -923,10 +916,10 @@ class CKview(AllScreen):
 			text += kom.get("text", "")
 			if ckglobals.RESOLUTION == "FHD":
 				repeat = 102 if config.plugins.chefkoch.bigfontsize.value else 109
-				text += "\n%s\n" % ("_" * repeat)
+				text += f"\n{'_' * repeat}\n"
 			else:
 				repeat = 96 if config.plugins.chefkoch.bigfontsize.value else 105
-				text += "\n%s\n" % ("_" * repeat)
+				text += f"\n{'_' * repeat}\n"
 		text += "\nChefkoch.de"
 		self["textpage"].setText(text)
 
@@ -983,7 +976,7 @@ class CKview(AllScreen):
 			repeat = 102 if config.plugins.chefkoch.bigfontsize.value else 109
 		else:
 			repeat = 96 if config.plugins.chefkoch.bigfontsize.value else 105
-		text += "\n%s\nChefkoch.de" % ("_" * repeat)
+		text += f"\n{'_' * repeat}\nChefkoch.de"
 		self["textpage"].setText(str(text))
 		self["picture"].show()
 
@@ -1357,9 +1350,12 @@ class CKfavoriten(AllScreen):
 				name = self.favlist[self.currItem]
 			except IndexError:
 				name = ""
-			if name != ">>> Neue Suche <<<" and name != "":
-				text = "\nRezept '%s' aus den Favoriten entfernen?" if self.favmode else "\nsuche '%s' aus den letzten Suchbegriffen entfernen?"
-				self.session.openWithCallback(self.red_return, MessageBox, text % name, MessageBox.TYPE_YESNO, timeout=10, default=False)
+			if name not in (">>> Neue Suche <<<", "") and self.favmode:
+				text = f"\nRezept '{name}' aus den Favoriten entfernen?"
+				self.session.openWithCallback(self.red_return, MessageBox, text, MessageBox.TYPE_YESNO, timeout=10, default=False)
+			elif name not in (">>> Neue Suche <<<", ""):
+				text = f"\nsuche '{name}' aus den letzten Suchbegriffen entfernen?"
+				self.session.openWithCallback(self.red_return, MessageBox, text, MessageBox.TYPE_YESNO, timeout=10, default=False)
 
 	def red_return(self, answer):
 		if answer is True:
@@ -1642,10 +1638,9 @@ class CKmain(AllScreen):
 		with open(ckglobals.VKATDB, "a") as f:
 			for index in range(len(result)):
 				data = result[index].get("video_format", "")
-				if data != "unknown":
-					if "".join(x for x in data if x.isdigit()) not in VKAT:
-						VKAT.append(id)
-						f.write(f"{data}|{data}\n")
+				if data != "unknown" and "".join(x for x in data if x.isdigit()) not in VKAT:
+					VKAT.append(id)
+					f.write(f"{data}|{data}\n")
 
 	def getNKAT(self):  # erzeuge die normale Kategorie
 		if not self.NKAT:
@@ -1708,16 +1703,15 @@ class CKmain(AllScreen):
 				for j in range(len(self.MKAT)):
 					dict = {}
 					parentId = result[index].get("parent", "")
-					if parentId:
-						if int(parentId) + offset == int(self.MKAT[j]["id"]):
-							dict["id"] = str(int(result[index].get("id", "")) + offset)
-							dict["title"] = result[index].get("name", "")
-							dict["parentId"] = str(int(parentId) + offset)
-							dict["level"] = 3
-							dict["descriptionText"] = result[index].get("name", "")
-							dict["linkName"] = result[index].get("url", "")
-							self.MKAT.append(dict)
-							break
+					if parentId and int(parentId) + offset == int(self.MKAT[j]["id"]):
+						dict["id"] = str(int(result[index].get("id", "")) + offset)
+						dict["title"] = result[index].get("name", "")
+						dict["parentId"] = str(int(parentId) + offset)
+						dict["level"] = 3
+						dict["descriptionText"] = result[index].get("name", "")
+						dict["linkName"] = result[index].get("url", "")
+						self.MKAT.append(dict)
+						break
 			self.MKAT.reverse()
 			self.MKAT.append({"id": "996", "title": "Chefkoch Magazin", "parentId": None, "level": 1, "descriptionText": "Chefkoch Magazin", "linkName": f"{ckglobals.BASEURL}/magazin/"})
 		return self.MKAT
@@ -1809,12 +1803,13 @@ class CKmain(AllScreen):
 			self.currKAT = self.getNKAT()
 			self.setTitle("Hauptmenü")
 			self.selectMainMenu()
+		elif self.actmenu == "thirdmenu" and self.currKAT:
+			for currkat in self.currKAT:
+				if currkat["id"] == self.parentId:
+					self.setTitle(currkat["title"])
+					break
+			self.selectSecondMenu()
 		elif self.actmenu == "thirdmenu":
-			if self.currKAT:
-				for currkat in self.currKAT:
-					if currkat["id"] == self.parentId:
-						self.setTitle(currkat["title"])
-						break
 			self.selectSecondMenu()
 
 
