@@ -7,7 +7,7 @@ from os.path import join, exists
 from secrets import randbelow, choice
 from requests import get, exceptions
 from PIL import Image
-from smtplib import SMTP, SMTP_SSL, SMTPAuthenticationError, SMTPConnectError, SMTPResponseException, SMTPException
+from smtplib import SMTP, SMTP_SSL, SMTPAuthenticationError, SMTPConnectError, SMTPException
 from shutil import copy
 from ssl import create_default_context
 from email.mime.multipart import MIMEMultipart
@@ -17,7 +17,7 @@ from time import strftime
 from twisted.internet.reactor import callInThread
 
 # ENIGMA IMPORTS
-from enigma import eListboxPythonMultiContent, eServiceReference, ePicLoad, eTimer, getDesktop, gFont, loadPNG, RT_HALIGN_LEFT, RT_HALIGN_CENTER, RT_VALIGN_CENTER, RT_WRAP
+from enigma import eListboxPythonMultiContent, eServiceReference, eTimer, getDesktop, gFont, loadPNG, RT_HALIGN_LEFT, RT_HALIGN_CENTER, RT_VALIGN_CENTER, RT_WRAP
 from Components.ActionMap import ActionMap, NumberActionMap
 from Components.config import config, ConfigSubsection, ConfigInteger, ConfigPassword, ConfigSelection, ConfigText, ConfigYesNo
 from Components.Label import Label
@@ -149,32 +149,34 @@ class AllScreen(Screen):
 					with open(ckglobals.ALPHA, "w") as f:
 						f.write(f"{int(config.av.osd_ckglobals.ALPHA.value * index / 40):d}")
 
-	def Pdownload(self, link):
-		link = link.encode("ascii", "xmlcharrefreplace").decode().replace(" ", "%20").replace("\n", "")
+	def PICdownload(self, url, index=None):
 		headers = {"User-Agent": ckglobals.AGENT, "Accept": "application/json"}
 		try:
-			response = get(link, headers=headers, timeout=(3.05, 6))
+			response = get(url, headers=headers, timeout=(3.05, 6))
 			response.raise_for_status()
 		except exceptions.RequestException as error:
 			self.downloadError(error)
 		else:
+			picfile = ckglobals.PICFILE if index is None else f"/tmp/chefkoch{index}.jpg"
 			try:
-				with open(ckglobals.PICFILE, "wb") as f:
+				with open(picfile, "wb") as f:
 					f.write(response.content)
-					self.showPic()
 			except OSError as logerr:
-				self.CKlog(f"Error writing ckglobals.PICFILE: {str(logerr)}")
+				self.CKlog(f"Error writing picture '{picfile}': {str(logerr)}")
+			else:
+				if index is None:
+					self.showPic()
+				else:
+					self[f"pic{index}"].instance.setPixmapFromFile(picfile)
+					self[f"pic{index}"].show()
 
 	def showPic(self):
-		picload = ePicLoad()
-		picload.setPara((self["picture"].instance.size().width(), self["picture"].instance.size().height(), 1, 0, 0, 1, "#00000000"))
-		if picload.startDecode(ckglobals.PICFILE, 0, 0, False) == 0:
-			ptr = picload.getData()
-			if ptr is not None:
-				self["picture"].instance.setPixmap(ptr)
+		if exists(ckglobals.PICFILE):
+			self["picture"].instance.setPixmapFromFile(ckglobals.PICFILE)
+			self["picture"].show()
 
-	def downloadError(self, output):
-		self.CKlog(output)
+	def downloadError(self, error):
+		self.CKlog(error)
 
 
 class CKview(AllScreen):
@@ -196,15 +198,15 @@ class CKview(AllScreen):
 			<widget name="vid5" position="1146,463" size="50,50" pixmap="{picpath}/videoicon.png" alphatest="blend" zPosition="1" />
 			<widget name="vid6" position="1146,538" size="50,50" pixmap="{picpath}/videoicon.png" alphatest="blend" zPosition="1" />
 			<widget name="vid7" position="1146,613" size="50,50" pixmap="{picpath}/videoicon.png" alphatest="blend" zPosition="1" />
-			<widget name="pic0" position="1115,75" size="113,75" alphatest="blend" zPosition="1" />
-			<widget name="pic1" position="1115,150" size="113,75" alphatest="blend" zPosition="1" />
-			<widget name="pic2" position="1115,225" size="113,75" alphatest="blend" zPosition="1" />
-			<widget name="pic3" position="1115,300" size="113,75" alphatest="blend" zPosition="1" />
-			<widget name="pic4" position="1115,375" size="113,75" alphatest="blend" zPosition="1" />
-			<widget name="pic5" position="1115,450" size="113,75" alphatest="blend" zPosition="1" />
-			<widget name="pic6" position="1115,525" size="113,75" alphatest="blend" zPosition="1" />
-			<widget name="pic7" position="1115,600" size="113,75" alphatest="blend" zPosition="1" />
-			<widget name="picture" position="center,70" size="280,210" zPosition="1" />
+			<widget name="pic0" position="1115,75" size="113,75" scaleFlags="centerScaled" alphatest="blend" zPosition="1" />
+			<widget name="pic1" position="1115,150" size="113,75" scaleFlags="centerScaled" alphatest="blend" zPosition="1" />
+			<widget name="pic2" position="1115,225" size="113,75" scaleFlags="centerScaled" alphatest="blend" zPosition="1" />
+			<widget name="pic3" position="1115,300" size="113,75" scaleFlags="centerScaled" alphatest="blend" zPosition="1" />
+			<widget name="pic4" position="1115,375" size="113,75" scaleFlags="centerScaled" alphatest="blend" zPosition="1" />
+			<widget name="pic5" position="1115,450" size="113,75" scaleFlags="centerScaled" alphatest="blend" zPosition="1" />
+			<widget name="pic6" position="1115,525" size="113,75" scaleFlags="centerScaled" alphatest="blend" zPosition="1" />
+			<widget name="pic7" position="1115,600" size="113,75" scaleFlags="centerScaled" alphatest="blend" zPosition="1" />
+			<widget name="picture" position="center,70" size="280,210" scaleFlags="centerScaled" zPosition="1" />
 			<widget name="postvid" position="center,145" size="50,50" pixmap="{picpath}/videoicon.png" alphatest="blend" zPosition="1" />
 			<widget name="starsbg" position="53,75" size="228,40" pixmap="{picpath}/starsbar_empty.png" transparent="1" zPosition="0" alphatest="blend" />
 			<widget name="stars" position="53,75" size="228,40" pixmap="{picpath}/starsbar_filled.png" transparent="1" />
@@ -394,7 +396,8 @@ class CKview(AllScreen):
 			else:
 				count = "keine"
 				score = "0"
-			picurl = f"{ckglobals.PICURLBASE}{ident}/bilder/{group.get('previewImageId', '')}/crop-160x120/{titel.replace(' ', '-')}.jpg" if group.get("previewImageId", "") else ckglobals.NOPICURL
+			previewImageId = group.get('previewImageId', '')
+			picurl = f"{ckglobals.PICURLBASE}{ident}/bilder/{previewImageId}/crop-160x120/{titel.replace(' ', '-')}.jpg" if previewImageId else ckglobals.NOPICURL
 			text = group.get("subtitle", "")
 			if len(text) > 155:
 				text = f"{text[:155]}…"
@@ -466,8 +469,9 @@ class CKview(AllScreen):
 
 	def fillRecipe(self):  # fülle das Rezept
 		self.REZ = self.getREZ(self.currId)
-		picurl = f"{ckglobals.PICURLBASE}{self.currId}/bilder/{self.REZ.get('previewImageId', '')}/crop-960x720/{self.titel}.jpg" if self.REZ.get("hasImage", "") else ckglobals.NOPICURL
-		callInThread(self.Pdownload, picurl)
+		plaintitel = self.titel.replace("'", "")
+		picurl = f"{ckglobals.PICURLBASE}{self.currId}/bilder/{self.REZ.get('previewImageId', '')}/crop-960x720/{plaintitel}.jpg" if self.REZ.get("hasImage", "") else ckglobals.NOPICURL
+		callInThread(self.PICdownload, picurl)
 		if self.REZ.get("rating", ""):
 			score = self.REZ.get("rating", "").get("rating", "") * 20.0
 			scoretext = f"{self.REZ.get('rating', '').get('rating', ''):1.1f} ({self.REZ.get('rating', '').get('numVotes', '')} Bewertungen)"
@@ -527,37 +531,30 @@ class CKview(AllScreen):
 			self.showRezept()
 
 	def getREZ(self, ident):  # hole den jeweiligen Rezeptdatensatz
-		rez, resp = self.getAPIdata(apiurl=f"recipes/{ident}")
+		result, resp = self.getAPIdata(apiurl=f"recipes/{ident}")
 		if resp != 200:
 			self.session.openWithCallback(self.eject, MessageBox, f"\nFehlermeldung vom Chefkoch.de Server: {resp}", MessageBox.TYPE_INFO, timeout=30, close_on_any_key=True)
-			self.close()
-			return {}
-		else:
-			return rez
+		return result
 
 	def getIMG(self, ident):  # hole die jeweilige Rezeptbilderliste
 		result, resp = self.getAPIdata(apiurl=f"recipes/{ident}/images", params={"offset": 0, "limit": config.plugins.chefkoch.maxpictures.value})
-		if resp != 200:
-			self.session.openWithCallback(self.eject, MessageBox, f"\nFehlermeldung vom Chefkoch.de Server: {resp}", MessageBox.TYPE_INFO, timeout=30, close_on_any_key=True)
-			self.close()
-			return {}
-		else:
+		img = {}
+		if resp == 200:
 			self.IMGlen = int(config.plugins.chefkoch.maxpictures.value) if result.get("count", "") > int(config.plugins.chefkoch.maxpictures.value) else result.get("count", "")
-			img = {}
 			img["count"] = self.IMGlen
 			img["results"] = result.get("results", "")
-			return img
+		else:
+			self.session.openWithCallback(self.eject, MessageBox, f"\nFehlermeldung vom Chefkoch.de Server: {resp}", MessageBox.TYPE_INFO, timeout=30, close_on_any_key=True)
+		return img
 
 	def getKOM(self, ident):  # hole die jeweilige Rezeptkommentarliste
 		maxcomments = config.plugins.chefkoch.maxcomments.value
 		result, resp = self.getAPIdata(apiurl=f"recipes/{ident}/comments", params={"offset": 0, "limit": maxcomments})
-		if resp != 200:
-			self.session.openWithCallback(self.eject, MessageBox, f"\nFehlermeldung vom Chefkoch.de Server: {resp}", MessageBox.TYPE_INFO, timeout=30, close_on_any_key=True)
-			self.close()
-			return {}
-		else:
+		if resp == 200:
 			self.KOMlen = maxcomments if result.get("count", "") > maxcomments else result.get("count", "")
-			return result
+		else:
+			self.session.openWithCallback(self.eject, MessageBox, f"\nFehlermeldung vom Chefkoch.de Server: {resp}", MessageBox.TYPE_INFO, timeout=30, close_on_any_key=True)
+		return result
 
 	def getGRPs(self):  # hole die gewünschte Rezeptgruppe (alle Rezepte, davon 'videocount' mit Video)
 		limit = config.plugins.chefkoch.maxrecipes.value
@@ -878,7 +875,7 @@ class CKview(AllScreen):
 	def setPrevIcons(self, toppos):
 		for index in range(ckglobals.LINESPERPAGE):
 			if len(self.picurllist) > toppos + index:
-				callInThread(self.Idownload, self.picurllist[toppos + index], index)
+				callInThread(self.PICdownload, self.picurllist[toppos + index], index)
 				if self.videolist[toppos + index]:
 					self[f"vid{index}"].show()
 				else:
@@ -990,31 +987,6 @@ class CKview(AllScreen):
 		self["textpage"].setText(str(text))
 		self["picture"].show()
 
-	def Idownload(self, link, index):
-		link = link.encode("ascii", "xmlcharrefreplace").decode().replace(" ", "%20").replace("\n", "")
-		headers = {"User-Agent": ckglobals.AGENT, "Accept": "application/json"}
-		try:
-			response = get(link, headers=headers, timeout=(3.05, 6))
-			response.raise_for_status()
-		except exceptions.RequestException as error:
-			self.downloadError(error)
-		else:
-			ckglobals.PICFILE = f"/tmp/chefkoch{index}.jpg"
-			try:
-				with open(ckglobals.PICFILE, "wb") as f:
-					f.write(response.content)
-			except OSError as err:
-				self.CKlog(f"[{ckglobals.MODULE_NAME}] Error writing PICFILE: {str(err)}")
-			else:
-				picload = ePicLoad()
-				pic_key = f"pic{index}"
-				picload.setPara((self[pic_key].instance.size().width(), self[pic_key].instance.size().height(), 1, 0, 0, 1, "#00000000"))
-				if picload.startDecode(ckglobals.PICFILE, 0, 0, False) == 0:
-					ptr = picload.getData()
-					if self.current == "menu" and ptr is not None:
-						self[pic_key].instance.setPixmap(ptr)
-						self[pic_key].show()
-
 	def zap(self):
 		servicelist = self.session.instantiateDialog(ChannelSelection)
 		self.session.execDialog(servicelist)
@@ -1115,7 +1087,7 @@ class CKpicshow(AllScreen):
 			<ePixmap position="0,0" size="1280,60" pixmap="{picpath}/chefkoch.png" alphatest="blend" zPosition="1" />
 			<widget name="release" position="43,25" size="40,19" font="Regular; 14" foregroundColor="#697279" backgroundColor="white" halign="left" valign="center" transparent="1" zPosition="2" />
 			<widget name="scoretext" position="15,130" size="260,50" font="Regular;20" foregroundColor="white" backgroundColor="background" halign="left" zPosition="1" transparent="1" />
-			<widget name="picture" position="270,70" size="720,540" alphatest="blend" zPosition="1" />
+			<widget name="picture" position="270,70" size="720,540" scaleFlags="centerScaled" alphatest="blend" zPosition="1" />
 			<widget name="picindex" position="1000,70" size="250,260" foregroundColor="white" backgroundColor="background" font="Regular;22" halign="left" zPosition="1" transparent="1" />
 			<widget name="pictext" position="30,615" size="1220,48" font="Regular;22" foregroundColor="white" backgroundColor="background" halign="center" valign="center" zPosition="1" transparent="1" />
 			<eLabel name="Line_Bottom" position="0,675" size="1280,1" backgroundColor="#3B8047" zPosition="3" />
@@ -1202,7 +1174,7 @@ class CKpicshow(AllScreen):
 			for index in range(len(self.IMG.get("results", ""))):
 				self.pixlist.append(self.IMG.get("results", "")[index].get("id", ""))
 			picurl = f"{ckglobals.PICURLBASE}{self.currId}/bilder/{self.REZ.get('previewImageId', '')}/crop-960x720/{self.titel}.jpg"
-			callInThread(self.Pdownload, picurl)
+			callInThread(self.PICdownload, picurl)
 			self.maxPics = len(self.pixlist) - 1
 			username = self.formatUsername(self.IMG.get("results", "")[self.count].get("owner", "").get("username", ""), self.IMG.get("results", "")[self.count].get("owner", "").get("rank", ""), 22)
 			self["picindex"].setText(f"Bild {self.count + 1} von {self.maxPics + 1}\nvon {username}")
@@ -1218,14 +1190,14 @@ class CKpicshow(AllScreen):
 	def picup(self):
 		self.count += 1 if self.count < self.maxPics else - self.count
 		picurl = f"{ckglobals.PICURLBASE}{self.currId}/bilder/{self.IMG.get('results', '')[self.count].get('id', '')}/crop-960x720/{self.titel}.jpg" if self.REZ.get("hasImage", "") else ckglobals.NOPICURL
-		callInThread(self.Pdownload, picurl)
+		callInThread(self.PICdownload, picurl)
 		username = self.formatUsername(self.IMG.get("results", "")[self.count].get("owner", "").get("username", ""), self.IMG.get("results", "")[self.count].get("owner", "").get("rank", ""), 22)
 		self["picindex"].setText(f"Bild {self.count + 1} von {self.maxPics + 1}\nvon {username}")
 
 	def picdown(self):
 		self.count -= 1 if self.count > 0 else - self.maxPics
 		picurl = f"{ckglobals.PICURLBASE}{self.currId}/bilder/{self.IMG.get('results', '')[self.count].get('id', '')}/crop-960x720/{self.titel}.jpg" if self.REZ.get("hasImage", "") else ckglobals.NOPICURL
-		callInThread(self.Pdownload, picurl)
+		callInThread(self.PICdownload, picurl)
 		username = self.formatUsername(self.IMG.get("results", "")[self.count].get("owner", "").get("username", ""), self.IMG.get("results", "")[self.count].get("owner", "").get("rank", ""), 22)
 		self["picindex"].setText(f"Bild {self.count + 1} von {self.maxPics + 1}\nvon {username}")
 
@@ -1238,7 +1210,7 @@ class CKpicshow(AllScreen):
 		self.count = number - 1
 		picurl = f"{ckglobals.PICURLBASE}{self.currId}/bilder/{self.IMG.get('results', '')[self.count].get('id', '')}/crop-960x720/{self.titel}.jpg" if self.REZ.get("hasImage", "") else ckglobals.NOPICURL
 		self.pixlist[self.count]
-		callInThread(self.Pdownload, picurl)
+		callInThread(self.PICdownload, picurl)
 		username = self.formatUsername(self.IMG.get("results", "")[self.count].get("owner", "").get("username", ""), self.IMG.get("results", "")[self.count].get("owner", "").get("rank", ""), 22)
 		self["picindex"].setText(f"Bild {self.count + 1} von {self.maxPics + 1}\nvon {username}")
 
@@ -1254,7 +1226,7 @@ class CKfullscreen(AllScreen):
 		<screen name="CKfullscreen" position="center,center" size="1280,720" resolution="1280,720" flags="wfNoBorder" title="" >
 			<ePixmap position="0,0" size="1280,720" pixmap="{picpath}/background.png" alphatest="blend" zPosition="-10" />
 			<eLabel position="center,center" size="960,720" backgroundColor="#000000" zPosition="1" />
-			<widget name="picture" position="center,center" size="960,720" alphatest="blend" zPosition="2" />
+			<widget name="picture" position="center,center" size="960,720" scaleFlags="centerScaled" alphatest="blend" zPosition="2" />
 		</screen>"""
 
 	def __init__(self, session):
