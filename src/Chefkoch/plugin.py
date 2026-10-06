@@ -110,15 +110,15 @@ class AllScreen(Screen):
 		except OSError as err:
 			self.ck_log(f"[{ckglobals.module_name}] Error preparing paths: {str(err)}")
 
-	def get_api_data(self, apiurl, params={}):
+	def get_api_data(self, apiurl, params=None):
 		url = f"{ckglobals.api_url_base}{apiurl}"
 		headers = {"User-Agent": ckglobals.agent, "Accept": "application/json"}
 		try:
 			response = get(url=url, params=params, headers=headers, timeout=(3.05, 6))
 			response.raise_for_status()
-			return (response.json(), response.status_code)
+			return response.json(), None
 		except exceptions.RequestException as error:
-			return ({}, error)
+			return {}, error
 
 	def ck_log(self, info, wert="", debug=False):
 		if debug and not config.plugins.chefkoch.debuglog.value:
@@ -527,38 +527,38 @@ class CKview(AllScreen):
 			self.show_rezept()
 
 	def get_rez(self, ident):  # hole den jeweiligen Rezeptdatensatz
-		result, resp = self.get_api_data(apiurl=f"recipes/{ident}")
-		if resp != 200:
-			self.session.openWithCallback(self.eject, MessageBox, f"\nFehlermeldung vom Chefkoch.de Server: {resp}", MessageBox.TYPE_INFO, timeout=30, close_on_any_key=True)
+		result, errmsg = self.get_api_data(apiurl=f"recipes/{ident}")
+		if errmsg:
+			self.session.openWithCallback(self.eject, MessageBox, f"\nFehlermeldung vom Chefkoch.de Server: {errmsg}", MessageBox.TYPE_INFO, timeout=30, close_on_any_key=True)
 		return result
 
 	def get_img(self, ident):  # hole die jeweilige Rezeptbilderliste
-		result, resp = self.get_api_data(apiurl=f"recipes/{ident}/images", params={"offset": 0, "limit": config.plugins.chefkoch.maxpictures.value})
+		result, errmsg = self.get_api_data(apiurl=f"recipes/{ident}/images", params={"offset": 0, "limit": config.plugins.chefkoch.maxpictures.value})
 		img = {}
-		if resp == 200:
+		if errmsg:
+			self.session.openWithCallback(self.eject, MessageBox, f"\nFehlermeldung vom Chefkoch.de Server: {errmsg}", MessageBox.TYPE_INFO, timeout=30, close_on_any_key=True)
+		else:
 			self.img_len = int(config.plugins.chefkoch.maxpictures.value) if result.get("count", "") > int(config.plugins.chefkoch.maxpictures.value) else result.get("count", "")
 			img["count"] = self.img_len
 			img["results"] = result.get("results", "")
-		else:
-			self.session.openWithCallback(self.eject, MessageBox, f"\nFehlermeldung vom Chefkoch.de Server: {resp}", MessageBox.TYPE_INFO, timeout=30, close_on_any_key=True)
 		return img
 
 	def get_kom(self, ident):  # hole die jeweilige Rezeptkommentarliste
 		maxcomments = config.plugins.chefkoch.maxcomments.value
-		result, resp = self.get_api_data(apiurl=f"recipes/{ident}/comments", params={"offset": 0, "limit": maxcomments})
-		if resp == 200:
-			self.kom_len = maxcomments if result.get("count", "") > maxcomments else result.get("count", "")
+		result, errmsg = self.get_api_data(apiurl=f"recipes/{ident}/comments", params={"offset": 0, "limit": maxcomments})
+		if errmsg:
+			self.session.openWithCallback(self.eject, MessageBox, f"\nFehlermeldung vom Chefkoch.de Server: {errmsg}", MessageBox.TYPE_INFO, timeout=30, close_on_any_key=True)
 		else:
-			self.session.openWithCallback(self.eject, MessageBox, f"\nFehlermeldung vom Chefkoch.de Server: {resp}", MessageBox.TYPE_INFO, timeout=30, close_on_any_key=True)
+			self.kom_len = maxcomments if result.get("count", "") > maxcomments else result.get("count", "")
 		return result
 
 	def get_grps(self):  # hole die gewünschte Rezeptgruppe (alle Rezepte, davon 'videocount' mit Video)
 		limit = config.plugins.chefkoch.maxrecipes.value
 		videocount, GRPs = 0, []
 		for index in range(max((limit) // 100, 1)):
-			result, resp = self.get_api_data(apiurl="recipes", params={"query": self.query, "offset": index * 100, "limit": min(limit, 100)})  # 3= sort by 'rating'
-			if resp != 200:
-				self.session.openWithCallback(self.eject, MessageBox, f"\nFehlermeldung vom Chefkoch.de Server: {resp}", MessageBox.TYPE_INFO, timeout=30, close_on_any_key=True)
+			result, errmsg = self.get_api_data(apiurl="recipes", params={"query": self.query, "offset": index * 100, "limit": min(limit, 100)})  # 3= sort by 'rating'
+			if errmsg:
+				self.session.openWithCallback(self.eject, MessageBox, f"\nFehlermeldung vom Chefkoch.de Server: {errmsg}", MessageBox.TYPE_INFO, timeout=30, close_on_any_key=True)
 				self.close()
 				return []
 			for j in range(len(result.get("results", ""))):
@@ -1005,9 +1005,9 @@ class CKview(AllScreen):
 		if self.current == "menu":
 			self.rez = self.get_rez(self.grp_s[self.curr_item].get("id", ""))
 		if self.rez and self.rez.get("recipeVideoId", ""):
-			result, resp = self.get_api_data(apiurl=f"videos/{self.rez.get('recipeVideoId', '')}")
-			if resp != 200:
-				self.session.openWithCallback(self.eject, MessageBox, f"\nFehlermeldung vom Chefkoch.de Server: {resp}", MessageBox.TYPE_INFO, timeout=30, close_on_any_key=True)
+			result, errmsg = self.get_api_data(apiurl=f"videos/{self.rez.get('recipeVideoId', '')}")
+			if errmsg:
+				self.session.openWithCallback(self.eject, MessageBox, f"\nFehlermeldung vom Chefkoch.de Server: {errmsg}", MessageBox.TYPE_INFO, timeout=30, close_on_any_key=True)
 				self.close()
 				return
 			if videourl := result.get("video_targetvideo_url"):
@@ -1522,8 +1522,7 @@ class CKmain(AllScreen):
 			mainId = self.main_id[self.curr_item]
 			if mainId == "998":  # Id für CK-Video Hauptmenü (= Secondmenu)
 				self.ck_video = True
-				self.curr_kat = self.get_vkat()
-				callInThread(self.make_second_menu, mainId)
+				callInThread(self.make_video_menu, mainId)
 			elif mainId == "996":  # Id für CK-Magazin Hauptmenü (= Secondmenu)
 				self.ck_video = False
 				self.curr_kat = self.get_mkat()
@@ -1552,10 +1551,15 @@ class CKmain(AllScreen):
 			query = f"{self.thirdmenuquery[self.curr_item]}&orderBy=3"  # 3= sort by 'rating'
 			self.session.openWithCallback(self.select_third_menu, CKview, query, f"'{self.thirdmenutitle[self.curr_item]}'", sort, False, False)
 
+	def make_video_menu(self, parentId):
+		self.curr_kat = self.get_vkat()
+		if self.curr_kat:
+			self.make_second_menu(parentId)
+
 	def make_main_menu(self):
-		result, resp = self.get_api_data(apiurl="recipes", params={"limit": 1})
-		if resp != 200:
-			self.session.openWithCallback(self.eject, MessageBox, f"\nFehlermeldung vom Chefkoch.de Server: {resp}", MessageBox.TYPE_INFO, timeout=30, close_on_any_key=True)
+		result, errmsg = self.get_api_data(apiurl="recipes", params={"limit": 1})
+		if errmsg:
+			self.session.openWithCallback(self.eject, MessageBox, f"\nFehlermeldung vom Chefkoch.de Server: {errmsg}", MessageBox.TYPE_INFO, timeout=30, close_on_any_key=True)
 			self.close()
 			return
 		self.setTitle("Hauptmenü")
@@ -1626,11 +1630,11 @@ class CKmain(AllScreen):
 			self.select_third_menu()
 
 	def make_vkat_db(self):  # hole alle verfügbaren Videokategorien
-		result, resp = self.get_api_data(apiurl="videos", params={"offset": 0, "limit": 10000})
-		if resp != 200:
-			self.session.openWithCallback(self.eject, MessageBox, f"\nFehlermeldung vom Chefkoch.de Server: {resp}", MessageBox.TYPE_INFO, timeout=30, close_on_any_key=True)
+		result, errmsg = self.get_api_data(apiurl="videos", params={"offset": 0, "limit": 10000})
+		if errmsg:
+			self.session.openWithCallback(self.eject, MessageBox, f"\nFehlermeldung vom Chefkoch.de Server: {errmsg}", MessageBox.TYPE_INFO, timeout=30, close_on_any_key=True)
 			self.close()
-			return
+			return False
 		seen_formats = []
 		with open(ckglobals.vkat_db, "a") as f:
 			for index in range(len(result)):
@@ -1639,17 +1643,18 @@ class CKmain(AllScreen):
 				if data != "unknown" and format_id not in seen_formats:
 					seen_formats.append(format_id)
 					f.write(f"{data}|{data}\n")
+		return True
 
 	def get_nkat(self):  # erzeuge die normale Kategorie
 		if not self.nkat:
-			result, resp = self.get_api_data(apiurl="recipes/categories")
-			if resp != 200:
-				self.session.openWithCallback(self.eject, MessageBox, f"\nFehlermeldung vom Chefkoch.de Server: {resp}", MessageBox.TYPE_INFO, timeout=30, close_on_any_key=True)
+			result, errmsg = self.get_api_data(apiurl="recipes/categories")
+			if errmsg:
+				self.session.openWithCallback(self.eject, MessageBox, f"\nFehlermeldung vom Chefkoch.de Server: {errmsg}", MessageBox.TYPE_INFO, timeout=30, close_on_any_key=True)
 				self.close()
 				return []
 			self.nkat = list(result)
-			self.nkat.extend([
-				{"id": "996", "title": "Chefkoch Magazin", "parentId": None, "level": 1, "descriptionText": "Chefkoch Magazin", "linkName": f"{ckglobals.base_url}/magazin/"},
+			self.nkat.extend([  # "Chefkoch Magazin" ist nicht mehr per einfachem API-call verfügbar
+#				{"id": "996", "title": "Chefkoch Magazin", "parentId": None, "level": 1, "descriptionText": "Chefkoch Magazin", "linkName": f"{ckglobals.base_url}/magazin/"},
 				{"id": "998", "title": "Chefkoch Videos", "parentId": None, "level": 1, "descriptionText": "Chefkoch Videos", "linkName": f"{ckglobals.base_url}/video.html"},
 				{"id": "999", "title": "Perfekte Dinner", "parentId": None, "level": 1, "descriptionText": "Das perfekte Dinner Rezepte", "linkName": f"{ckglobals.base_url}/das-perfekte-dinner.html"},
 			])
@@ -1657,9 +1662,9 @@ class CKmain(AllScreen):
 
 	def get_vkat(self):  # erzeuge die Videokategorie
 		if not self.vkat:
+			if not fileExists(ckglobals.vkat_db) and not self.make_vkat_db():
+				return []
 			self.vkat.extend(item for item in self.nkat if item.get("level") == 1)
-			if not fileExists(ckglobals.vkat_db):
-				self.make_vkat_db()  # wird nur bei fehlender VKATdb erzeugt (= Notfall)
 			index = 1000  # erzeuge eigene Video-IDs über 1000
 			with open(ckglobals.vkat_db) as f:
 				for data in f:
@@ -1681,9 +1686,9 @@ class CKmain(AllScreen):
 
 	def get_mkat(self):  # erzeuge die Magazinkategorie
 		if not self.mkat:
-			result, resp = self.get_api_data(apiurl="magazine/categories")
-			if resp != 200:
-				self.session.openWithCallback(self.eject, f"\nFehlermeldung vom Chefkoch.de Server: {resp}", MessageBox.TYPE_INFO, timeout=30, close_on_any_key=True)
+			result, errmsg = self.get_api_data(apiurl="magazine/categories")
+			if errmsg:
+				self.session.openWithCallback(self.eject, MessageBox, f"\nFehlermeldung vom Chefkoch.de Server: {errmsg}", MessageBox.TYPE_INFO, timeout=30, close_on_any_key=True)
 				self.close()
 				return
 			offset = 2000  # erzeuge eigene Magazin-IDs über 2000
