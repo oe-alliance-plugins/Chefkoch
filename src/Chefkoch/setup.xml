@@ -5,14 +5,14 @@
 		<item level="0" text="Maximale Anzahl Kommentare:" description="Maximale Anzahl der Kommentare. Dies begrenzt die Downloads und damit die Wartezeiten.">config.plugins.chefkoch.maxcomments</item>
 		<item level="0" text="Maximale Anzahl Rezeptbilder" description="Maximale Anzahl Rezeptbilder. Dies begrenzt die Downloads und damit die Wartezeiten.">config.plugins.chefkoch.maxpictures</item>
 		<item level="0" text="--- E-Mail Versandoptionen -----------------------------------------------------------------------------"/>
-		<item level="0" text="Versende Rezepte per E-Mail: *" description="Erlaube das Versenden von Rezepte per E-Mail. Bei manchen Anbietern (z.B. gmx.de) muss der Zugriff externer Programme erst aktiviert werden:">config.plugins.chefkoch.mail</item>
-		<item level="0" text="E-Mail Absender: *" description="E-Mail Adresse des Absenders. Beispiel: 'meine@gmx.de'">config.plugins.chefkoch.mailfrom</item>
-		<item level="0" text="E-Mail Empfänger: *" description="E-Mail Adresse des Empfängers.\nBeispiel: 'fremde@gmx.de'\nAuch mehrere E-Mails können aufgelistet werden\nz.B. 'fremd@gmx.de, fremd@telekom.de',\ndie dann einzeln zur Auswahl stehen.">config.plugins.chefkoch.mailto</item>
+		<item level="0" text="Versende Rezepte per E-Mail: *" description="Erlaube das Versenden von Rezepte per E-Mail. Bei manchen Anbietern (z.B. gmx.de) muss der Zugriff externer Programme erst aktiviert werden.">config.plugins.chefkoch.mail</item>
+		<item level="0" text="E-Mail Absender: *" description="E-Mail Adresse des Absenders.\nBeispiel: 'meine@gmx.de'">config.plugins.chefkoch.mailfrom</item>
+		<item level="0" text="E-Mail Empfänger: *" description="E-Mail Adresse des Empfängers.\nBeispiel: 'fremd@gmx.de'\nEs können mehrere E-Mails aufgelistet werden\nz.B. 'fremd@gmx.de, fremd@telekom.de',\ndie dann einzeln zur Auswahl stehen.">config.plugins.chefkoch.mailto</item>
 		<item level="0" text="E-Mail Login: *" description="E-Mail Username für Login. Beispiel: 'meine@gmx.de">config.plugins.chefkoch.login</item>
 		<item level="0" text="E-Mail Passwort: *" description="HINWEIS: Aus Sicherheitsgründen fordern die meisten EMail-Anbieter ein separat zu erstellendes, anwendungsspezifisches Passwort (App-Passwort), was dann hier anstelle des User-Passworts verwendet werden muss!">config.plugins.chefkoch.password</item>
 		<item level="0" text="E-Mail Server: *" description="E-Mail Server für Login. Beispiel: 'mail.gmx.de'">config.plugins.chefkoch.server</item>
 		<item level="0" text="E-Mail Server STARTTLS: * " description="E-Mail Server STARTTLS für Login.\n'Ja' (=STARTTLS) wird üblicherweise genutzt.\n'Nein' (=SSL/TLS) wenn der Anbieter ausdrücklich „SSL/TLS“ bzw. „SSL encryption“ verlangt.">config.plugins.chefkoch.starttls</item>
-		<item level="0" text="E-Mail Server Port: *" description="E-Mail Server Port für Login.\nPort 587 ist typisch für STARTTLS\nPort 465 ist typisch fürSSL/TLS.">config.plugins.chefkoch.port</item>
+		<item level="0" text="E-Mail Server Port: *" description="E-Mail Server Port für Login.\nPort 587 ist typisch für STARTTLS\nPort 465 ist typisch für SSL/TLS.">config.plugins.chefkoch.port</item>
 		<item level="0" text="--- Protokollfunktionen -----------------------------------------------------------------------------------"/>
 		<item level="0" text="Protkollieren im DebugLog:" description="Vorgänge werden nun im regulären Debuglog mitprotokolliert">config.plugins.chefkoch.debuglog</item>
 		<item level="0" text="Protkollieren in eigener Datei:" description="Vorgänge werden nun in der Datei '/home/root/logs' mitprotokolliert">config.plugins.chefkoch.logtofile</item>
