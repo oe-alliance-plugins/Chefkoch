@@ -1,5 +1,5 @@
 # PYTHON IMPORTS
-from base64 import b64decode
+from base64 import b64encode, b64decode
 from datetime import datetime
 from operator import itemgetter
 from os import rename, remove, makedirs, linesep
@@ -39,6 +39,41 @@ from Tools.Directories import fileExists, resolveFilename, SCOPE_PLUGINS, SCOPE_
 # PLUGIN IMPORTS
 from . import __version__
 
+
+class CKPassword(ConfigPassword):
+	def __init__(self, default="", fixed_size=False, visible_width=False):
+		super().__init__(default=default, fixed_size=fixed_size, visible_width=visible_width)
+
+	def load(self):
+		super().load()
+		if self.saved_value:
+			try:
+				self.value = b64decode(self.saved_value.encode("ascii")).decode("utf-8")
+			except (ValueError, UnicodeDecodeError):
+				pass
+		self.loadValue = self.value
+
+	def isChanged(self):
+		savedValue = self.saved_value
+		if savedValue:
+			try:
+				savedValue = b64decode(savedValue.encode("ascii")).decode("utf-8")
+			except (ValueError, UnicodeDecodeError):
+				pass
+		return self.value != savedValue
+
+	def save(self):
+		value = self.value
+		if value != self.loadValue:
+			encodedValue = b64encode(value.encode("utf-8")).decode("ascii")
+			self.value = encodedValue
+			try:
+				super().save()
+			finally:
+				self.value = value
+			self.loadValue = value
+
+
 # orderBy-Codes: 0= unbekannt, 1= = unbekannt, 2= unbekannt, 3= rating, 4= unbekannt, 5= unbekannt, 6= createdAt, 7= isPremium, 8= unbekannt
 # nicht unterstüzte orderBy-Queries: numVotes, preparationTime
 config.plugins.chefkoch = ConfigSubsection()
@@ -51,6 +86,7 @@ config.plugins.chefkoch.mailfrom = ConfigText(default="", fixed_size=False)
 config.plugins.chefkoch.mailto = ConfigText(default="", fixed_size=False)
 config.plugins.chefkoch.login = ConfigText(default="", fixed_size=False)
 config.plugins.chefkoch.password = ConfigPassword(default="", fixed_size=False)
+config.plugins.chefkoch.password = CKPassword(default="", fixed_size=False)
 config.plugins.chefkoch.server = ConfigText(default="", fixed_size=False)
 config.plugins.chefkoch.port = ConfigInteger(587, (0, 99999))
 config.plugins.chefkoch.starttls = ConfigYesNo(default=True)
@@ -711,12 +747,12 @@ class CKview(AllScreen):
 				msgText += self.rez.get("ingredientGroups", "")[i].get("ingredients", "")[j].get("name", "") if self.rez else ""
 				msgText += self.rez.get("ingredientGroups", "")[i].get("ingredients", "")[j].get("usageInfo", "") if self.rez else ""
 		msgText += f"\n\nZUBEREITUNG\n{self.rez.get('instructions', '')}" if self.rez else ""
-		msgText += f"\n{'_' * 30}\nChefkoch.de"
+		msgText += "\n" + str("_" * 30) + "\nChefkoch.de"
 		if fileExists(ckglobals.pic_file):
 			Image.open(ckglobals.pic_file).resize((320, 240), Image.Resampling.LANCZOS).save("/tmp/emailpic.jpg")
 		mailFrom = config.plugins.chefkoch.mailfrom.value
 		mailLogin = config.plugins.chefkoch.login.value
-		mailPassword = b64decode(config.plugins.chefkoch.password.value).decode()
+		mailPassword = config.plugins.chefkoch.password.value
 		mailServer = config.plugins.chefkoch.server.value
 		mailPort = config.plugins.chefkoch.port.value
 		msgRoot = MIMEMultipart("related")
