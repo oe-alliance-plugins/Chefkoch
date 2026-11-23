@@ -292,7 +292,7 @@ class CKview(AllScreen):
 		self.current = "menu"
 		self.name = ""
 		self.chefvideo = ""
-		self.grp_s = []
+		self.grps = []
 		self.rez = {}
 		self.kom = {}
 		self.picurllist = []
@@ -361,10 +361,10 @@ class CKview(AllScreen):
 	def on_layout_finished(self):
 		if self.zufall:
 			self.current = "postview"
-			if not self.grp_s:
-				self.grp_s = self.get_grps()
-				self.max_page = (len(self.grp_s) - 1) // ckglobals.lines_per_page + 1
-			self.show_recipe(self.grp_s[randbelow(len(self.grp_s))].get("id", ""))
+			if not self.grps:
+				self.grps = self.get_grps()
+				self.max_page = (len(self.grps) - 1) // ckglobals.lines_per_page + 1
+			self.show_recipe(self.grps[randbelow(len(self.grps))].get("id", ""))
 			callInThread(self.fill_recipe)
 		elif self.fav:
 			self.current = "postview"
@@ -407,17 +407,14 @@ class CKview(AllScreen):
 		self["menu"].show()
 
 	def fill_rlist(self):  # fülle die Rezeptliste
-		self.grp_s = GRPs = self.get_grps()
-		lenGRPs = len(GRPs)
+		self.grps = self.get_grps()
+		lenGRPs = len(self.grps)
 		self.max_page = (lenGRPs - 1) // ckglobals.lines_per_page + 1
 		self.setTitle(f"{lenGRPs} {self.titel.replace(' Rezepte', '')} ({self.video_count} {'Video' if self.video_count == 1 else 'Videos'})")
 		self["label_green"].setText(f"Sortierung: {self.sortname[self.sort]}")
 		self["pageinfo"].setText(f"Seite {int(self.curr_item // ckglobals.lines_per_page + 1)} von {self.max_page}")
-		kochentries = []
-		titellist = []
-		videolist = []
-		picurllist = []
-		for index, group in enumerate(GRPs):
+		kochentries, titellist, videolist, picurllist = [], [], [], []
+		for index, group in enumerate(self.grps):
 			ident = str(group.get("id", ""))
 			titel = group.get("title", "")
 			time = str(group.get("preparationTime", ""))
@@ -437,7 +434,7 @@ class CKview(AllScreen):
 			picurllist.append(picurl)
 			res = [index]
 			res.append(MultiContentEntryText(pos=(int(110 * ckglobals.scale), 10), size=(int(965 * ckglobals.scale), int(30 * ckglobals.scale)), font=-1, color_sel=16777215, flags=RT_HALIGN_LEFT, text=titel))  # TITLE
-			png = join(ckglobals.pic_path, f"{ckglobals.resolution}", f"/small-{score}.png")
+			png = join(ckglobals.pic_path, f"{ckglobals.resolution}/small-{score}.png")
 			if fileExists(png):
 				res.append(MultiContentEntryPixmapAlphaTest(pos=(int(14 * ckglobals.scale), int(36 * ckglobals.scale)), size=(int(75 * ckglobals.scale), int(15 * ckglobals.scale)), png=loadPNG(png)))  # STARS
 			res.append(MultiContentEntryText(pos=(int(11 * ckglobals.scale), int(52 * ckglobals.scale)), size=(int(75 * ckglobals.scale), int(30 * ckglobals.scale)), font=1, color=16777215, color_sel=16777215,
@@ -653,8 +650,8 @@ class CKview(AllScreen):
 		if hideflag and self.current == "menu":
 			self.current = "postview"
 			self.curr_item = self["menu"].getSelectedIndex()
-			if self.grp_s:
-				self.show_recipe(self.grp_s[self.curr_item].get("id", ""))
+			if self.grps:
+				self.show_recipe(self.grps[self.curr_item].get("id", ""))
 				callInThread(self.fill_recipe)
 		elif hideflag and self.current == "postview" and self.rez and self.pic_count == 1:
 			self.session.openWithCallback(self.show_pic, CKfullscreen)
@@ -672,14 +669,14 @@ class CKview(AllScreen):
 
 	def red_return(self, answer):
 		if answer is True and self.zufall:
-			data = f"{self.name}:::{self.grp_s[self.curr_item].get('id', '')}"
+			data = f"{self.name}:::{self.grps[self.curr_item].get('id', '')}"
 			with open(ckglobals.favorites, "a") as f:
 				f.write(data)
 				f.write(linesep)
 			self.session.open(CKfavoriten)
 		elif answer is True:
 			self.curr_item = self["menu"].getSelectedIndex()
-			data = f"{self.titellist[self.curr_item]}:::{self.grp_s[self.curr_item].get('id', '')}"
+			data = f"{self.titellist[self.curr_item]}:::{self.grps[self.curr_item].get('id', '')}"
 			with open(ckglobals.favorites, "a") as f:
 				f.write(data)
 				f.write(linesep)
@@ -1038,7 +1035,7 @@ class CKview(AllScreen):
 
 	def play_video(self):
 		if self.current == "menu":
-			self.rez = self.get_rez(self.grp_s[self.curr_item].get("id", ""))
+			self.rez = self.get_rez(self.grps[self.curr_item].get("id", ""))
 		if self.rez and self.rez.get("recipeVideoId", ""):
 			result, errmsg = self.get_api_data(apiurl=f"videos/{self.rez.get('recipeVideoId', '')}")
 			if errmsg:
