@@ -1,3 +1,13 @@
+########################################################################################################
+# Chefkoch - Python2 version by Kashmir @IHAD († 06.11.2018)                                           #
+# Python3 version (2021-2026) by Mr.Servo @OpenA.TV, jbleyel @OpenA.TV - skinned by stein17 @OpenA.TV  #
+# -----------------------------------------------------------------------------------------------------#
+# This plugin is licensed under the GNU version 3.0 <https://www.gnu.org/licenses/gpl-3.0.en.html>.    #
+# This plugin is NOT free software. It is open source, you are allowed to modify it (if you keep       #
+# the license), but it may not be commercially distributed. Advertise with this plugin is not allowed. #
+# For other uses, permission from the authors is necessary.                                            #
+########################################################################################################
+
 # PYTHON IMPORTS
 from base64 import b64encode, b64decode
 from datetime import datetime
@@ -17,15 +27,15 @@ from time import strftime
 from twisted.internet.reactor import callInThread
 
 # ENIGMA IMPORTS
-from enigma import eListboxPythonMultiContent, eServiceReference, eTimer, getDesktop, gFont, loadPNG, RT_HALIGN_LEFT, RT_HALIGN_CENTER, RT_VALIGN_CENTER, RT_WRAP
+from enigma import eServiceReference, eTimer, getDesktop, loadPNG
 from Components.ActionMap import ActionMap, NumberActionMap
 from Components.config import config, ConfigSubsection, ConfigInteger, ConfigPassword, ConfigSelection, ConfigText, ConfigYesNo
 from Components.Label import Label
-from Components.MenuList import MenuList
-from Components.MultiContent import MultiContentEntryText, MultiContentEntryPixmapAlphaTest
 from Components.Pixmap import Pixmap
 from Components.ScrollLabel import ScrollLabel
 from Components.ProgressBar import ProgressBar
+from Components.Sources.List import List
+from Components.Sources.StaticText import StaticText
 from Screens.ChannelSelection import ChannelSelection
 from Screens.ChoiceBox import ChoiceBox
 from Screens.InfoBar import MoviePlayer
@@ -122,7 +132,6 @@ class CKglobals:
 	favorites = join(config_path, "favoriten")
 	searches = join(config_path, "suchen")
 	resolution = "FHD" if getDesktop(0).size().width() >= 1920 else "HD"
-	scale = 1.5 if resolution == "FHD" else 1.0
 
 
 ckglobals = CKglobals
@@ -214,13 +223,26 @@ class CKview(AllScreen):
 	skin = """
 		<screen name="CKview" position="center,center" size="1280,720" resolution="1280,720" title="lade Daten, bitte warten..." flags="wfNoBorder" backgroundColor="background">
 			<widget source="Title" render="Label" position="center,0" size="870,60" font="Regular; 24" transparent="1" foregroundColor="#336f3d" backgroundColor="white" halign="center" valign="center" zPosition="3" />
-			<ePixmap position="0,0" size="1280,60" pixmap="{picpath}/chefkoch.png" alphatest="blend" zPosition="1" />
-			<ePixmap position="0,0" size="1920,1080" pixmap="{picpath}/background.png"  zPosition="-10" />
+			<ePixmap position="0,0" size="1280,60" pixmap="{picpath}/chefkoch.png" scaleFlags="scale" alphatest="blend" zPosition="1" />
+			<ePixmap position="0,0" size="1280,720" pixmap="{picpath}/background.png" scaleFlags="scale" zPosition="-10" />
 			<widget render="Label" source="global.CurrentTime" position="1112,0" size="120,30" font="Regular;26" foregroundColor="#697279" backgroundColor="white" halign="center" valign="center" zPosition="2">
 				<convert type="ClockToText">Format:%H:%M:%S</convert>
 			</widget>
 			<widget name="release" position="43,25" size="40,19" font="Regular; 14" foregroundColor="#697279" backgroundColor="white" halign="left" valign="center" transparent="1" zPosition="2" />
-			<widget name="menu" position="40,75" size="1065,600" font="Regular;{fontsize}" selectionPixmap="{picpath}/BG_Pixmap_Menu.png" foregroundColor="white" backgroundColor="black"  scrollbarMode="showAlways" scrollbarBorderWidth="1" scrollbarWidth="10" scrollbarForegroundColor="#b5d7bb" scrollbarBorderColor="#336F3D" zPosition="1" transparent="1"/>
+			<widget source="menu" render="Listbox" position="40,75" size="1065,600" selectionPixmap="{picpath}/BG_Pixmap_Menu.png" enableWrapAround="1" foregroundColor="white" foregroundColorSelected="white" backgroundColor="black"
+				scrollbarMode="showAlways" scrollbarBorderWidth="1" scrollbarWidth="10" scrollbarForegroundColor="#b5d7bb" scrollbarBorderColor="#336F3D" zPosition="1" transparent="1">
+				<convert type="TemplatedMultiContent">{"template": [
+					MultiContentEntryText(pos=(110,10), size=(954,30), font=0, flags=RT_HALIGN_LEFT|RT_VALIGN_CENTER|RT_ELLIPSIS, text=1),  # title
+					MultiContentEntryPixmapAlphaBlend(pos=(14,36), size=(75,15), flags=BT_SCALE, png=2),  # stars
+					MultiContentEntryText(pos=(10,52), size=(76,20), font=1, flags=RT_HALIGN_CENTER|RT_VALIGN_CENTER, color="#FFFFFF", color_sel="#FFFFFF", text=3),  # count
+					MultiContentEntryText(pos=(110,45), size=(954,30), font=0, flags=RT_HALIGN_LEFT|RT_VALIGN_CENTER|RT_WRAP, color="#A5A5A5", color_sel="#D3D3D3", text=4),  # text
+					MultiContentEntryText(pos=(10,6), size=(76,26), font=2, flags=RT_HALIGN_CENTER|RT_VALIGN_CENTER, backcolor="#3B8047", backcolor_sel="#EFA13F", color="#FFFFFF", color_sel="#FFFFFF", text=5)  # time
+					],
+					"fonts": [gFont("Regular",{fontsize}),gFont("Regular",18),gFont("Regular",20)],
+					"itemHeight":75
+					}
+				</convert>
+			</widget>
 			<widget name="vid0" position="1146,88" size="50,50" pixmap="{picpath}/videoicon.png" alphatest="blend" zPosition="1" />
 			<widget name="vid1" position="1146,163" size="50,50" pixmap="{picpath}/videoicon.png" alphatest="blend" zPosition="1" />
 			<widget name="vid2" position="1146,238" size="50,50" pixmap="{picpath}/videoicon.png" alphatest="blend" zPosition="1" />
@@ -241,37 +263,33 @@ class CKview(AllScreen):
 			<widget name="postvid" position="center,145" size="50,50" pixmap="{picpath}/videoicon.png" alphatest="blend" zPosition="1" />
 			<widget name="starsbg" position="53,75" size="228,40" pixmap="{picpath}/starsbar_empty.png" transparent="1" zPosition="0" alphatest="blend" />
 			<widget name="stars" position="53,75" size="228,40" pixmap="{picpath}/starsbar_filled.png" transparent="1" />
-			<widget name="scoretext" position="53,130" size="440,130" font="Regular; 20" halign="left" zPosition="1" transparent="1" />
-			<widget name="recipetext" position="790,70" size="438,190" font="Regular; 20" halign="left" zPosition="1" transparent="1" />
+			<widget source="scoretext" render="Label" position="53,130" size="440,130" font="Regular; 20" halign="left" zPosition="1" transparent="1" />
+			<widget source="recipetext" render="Label" position="790,70" size="438,190" font="Regular; 20" halign="left" zPosition="1" transparent="1" />
 			<widget name="textpage" position="50,300" size="1178,375" font="Regular;{fontsize}" scrollbarMode="showOnDemand" scrollbarBorderWidth="2" scrollbarWidth="10" scrollbarForegroundColor="#b5d7bb" scrollbarBorderColor="#336F3D" halign="left" zPosition="0" transparent="1" />
-			<widget name="pageinfo" position="1112,36" size="120,21" font="Regular; 16" foregroundColor="white" backgroundColor="#336f3d" halign="center" transparent="0" zPosition="2" />
-			<widget name="label_red" position="25,690" size="180,24" font="Regular;18" foregroundColor="white" backgroundColor="background" halign="left" transparent="1" zPosition="2" />
-			<widget name="label_green" position="235,690" size="300,24" font="Regular;18" foregroundColor="white" backgroundColor="background" halign="left" transparent="1" zPosition="2" />
-			<widget name="label_yellow" position="565,690" size="240,24" font="Regular;18" foregroundColor="white" backgroundColor="background" halign="left" transparent="1" zPosition="2" />
-			<widget name="label_blue" position="835,690" size="150,24" font="Regular;18" foregroundColor="white" backgroundColor="background" halign="left" transparent="1" zPosition="2" />
-			<widget name="label_rezeptnr" position="center,41" size="870,20" font="Regular; 14" foregroundColor="#697279" backgroundColor="white" halign="center" valign="center" transparent="1" zPosition="2" />
-			<widget name="label_1-0" position="86,254" size="350,27" font="Regular; 20" foregroundColor="white" backgroundColor="background" halign="left" transparent="1" zPosition="1" />
+			<widget source="pageinfo" render="Label" position="1112,36" size="120,21" font="Regular; 16" foregroundColor="white" backgroundColor="#336f3d" halign="center" transparent="0" zPosition="2" />
+			<widget source="label_rezeptnr" render="Label" position="center,41" size="870,20" font="Regular; 14" foregroundColor="#697279" backgroundColor="white" halign="center" valign="center" transparent="1" zPosition="2" />
+			<widget source="label_1-0" render="Label" position="86,254" size="350,27" font="Regular; 20" foregroundColor="white" backgroundColor="background" halign="left" transparent="1" zPosition="1" />
 			<widget name="button_1-0" position="49,252" size="30,30" pixmap="{picpath}/1-0.png" alphatest="blend" zPosition="1" />
-			<widget name="label_ok" position="1030,690" size="180,24" font="Regular;18" foregroundColor="white" backgroundColor="background" halign="left" transparent="1" zPosition="2" />
-			<widget name="button_ok" position="992,686" size="30,30" pixmap="{picpath}/ok.png" alphatest="blend" zPosition="1" />
-			<widget name="label_play" position="833,255" size="240,24" font="Regular;18" foregroundColor="white" backgroundColor="background" halign="left" transparent="1" zPosition="2" />
 			<widget name="button_play" position="794,252" size="30,30" pixmap="{picpath}/play.png" alphatest="blend" zPosition="1" />
-			<widget name="button_green" position="331,740" size="18,18" zPosition="2" />
-			<widget name="button_yellow" position="714,740" size="18,18" zPosition="2" />
-			<widget name="button_red" position="30,740" size="18,18" alphatest="blend" zPosition="2" />
-			<widget name="button_blue" position="1091,740" size="18,18" alphatest="blend" zPosition="2" />
-			<eLabel name="button_red" position="5,687" size="8,30" backgroundColor="red" zPosition="2" />
-			<eLabel name="button_green" position="215,687" size="8,30" backgroundColor="green" zPosition="2" />
-			<eLabel name="button_yellow" position="545,687" size="8,30" backgroundColor="yellow" zPosition="2" />
-			<eLabel name="button_blue" position="815,687" size="8,30" backgroundColor="blue" zPosition="2" />
-			<eLabel name="Line_Bottom" position="0,680" size="1280,1" backgroundColor="#3B8047" zPosition="5" />
+			<widget source="label_play" render="Label" position="833,255" size="240,24" font="Regular;18" foregroundColor="white" backgroundColor="background" halign="left" transparent="1" zPosition="2" />
+			<widget source="button_red" render="Label" position="5,687" size="8,30" backgroundColor="red" zPosition="2" />
+			<widget source="label_red" render="Label" position="25,690" size="180,24" font="Regular;18" foregroundColor="white" backgroundColor="background" halign="left" transparent="1" zPosition="2" />
+			<widget source="button_green" render="Label" position="215,687" size="8,30" backgroundColor="green" zPosition="2" />
+			<widget source="label_green" render="Label" position="235,690" size="300,24" font="Regular;18" foregroundColor="white" backgroundColor="background" halign="left" transparent="1" zPosition="2" />
+			<widget source="button_yellow" render="Label" position="545,687" size="8,30" backgroundColor="yellow" zPosition="2" />
+			<widget source="label_yellow" render="Label" position="565,690" size="240,24" font="Regular;18" foregroundColor="white" backgroundColor="background" halign="left" transparent="1" zPosition="2" />
+			<widget source="button_blue" render="Label" position="815,687" size="8,30" backgroundColor="blue" zPosition="2" />
+			<widget source="label_blue" render="Label" position="835,690" size="150,24" font="Regular;18" foregroundColor="white" backgroundColor="background" halign="left" transparent="1" zPosition="2" />
+			<widget name="button_ok" position="992,686" size="30,30" pixmap="{picpath}/ok.png" alphatest="blend" zPosition="1" />
+			<widget source="label_ok" render="Label" position="1030,690" size="180,24" font="Regular;18" foregroundColor="white" backgroundColor="background" halign="left" transparent="1" zPosition="2" />
+			<eLabel position="0,680" size="1280,1" backgroundColor="#3B8047" zPosition="5" />
 			<widget name="Line_Bottom" position="50,290" size="1178,1" backgroundColor="#3B8047" zPosition="0" />
 		</screen>"""
 
 	def __init__(self, session, query, titel, sort, fav, zufall):
 		global hideflag
 		hideflag = True
-		fontsize = int((18 if config.plugins.chefkoch.bigfontsize.value else 16) * ckglobals.scale)
+		fontsize = 18 if config.plugins.chefkoch.bigfontsize.value else 16
 		self.skin = self.skin.replace("{picpath}", f"{ckglobals.plugin_path}/pic/{ckglobals.resolution}").replace("{fontsize}", str(fontsize))
 		Screen.__init__(self, session, self.skin)
 		self.session = session
@@ -289,6 +307,8 @@ class CKview(AllScreen):
 		self.curr_item = 0
 		self.pic_count = 0
 		self.video_count = 0
+		self.kochentries = []
+		self.preview_page = -1
 		self.current = "menu"
 		self.name = ""
 		self.chefvideo = ""
@@ -308,37 +328,34 @@ class CKview(AllScreen):
 		self["postvid"] = Pixmap()
 		self["stars"] = ProgressBar()
 		self["starsbg"] = Pixmap()
-		self["scoretext"] = Label("")
-		self["recipetext"] = Label("")
-		self["button_green"] = Pixmap()
-		self["button_red"] = Pixmap()
-		self["button_yellow"] = Pixmap()
-		self["button_blue"] = Pixmap()
+		self["scoretext"] = StaticText()
+		self["recipetext"] = StaticText()
+		self["button_red"] = StaticText(" ")
+		self["button_green"] = StaticText(" ")
+		self["button_yellow"] = StaticText(" ")
+		self["button_blue"] = StaticText(" ")
 		self["textpage"] = ScrollLabel("")
-		self["menu"] = ItemList([])
-		self["label_red"] = Label("")
-		self["label_green"] = Label("")
-		self["label_yellow"] = Label("")
-		self["label_blue"] = Label("")
-		self["label_rezeptnr"] = Label("")
-		self["label_1-0"] = Label("")
+		self["menu"] = List()
+		self["menu"].onSelectionChanged.append(self.menu_selection_changed)
+		self["label_red"] = StaticText()
+		self["label_green"] = StaticText()
+		self["label_yellow"] = StaticText()
+		self["label_blue"] = StaticText()
+		self["label_rezeptnr"] = StaticText()
+		self["label_1-0"] = StaticText()
 		self["button_1-0"] = Pixmap()
-		self["pageinfo"] = Label("")
-		self["label_ok"] = Label("")
+		self["pageinfo"] = StaticText()
+		self["label_ok"] = StaticText()
 		self["button_ok"] = Pixmap()
-		self["label_play"] = Label("")
+		self["label_play"] = StaticText()
 		self["button_play"] = Pixmap()
 		self["Line_Bottom"] = Label("")
 		self["release"] = Label(ckglobals.release)
-		self["NumberActions"] = NumberActionMap(["NumberActions", "OkCancelActions", "DirectionActions", "ColorActions", "ChannelSelectBaseActions", "ButtonSetupActions"], {
+		self["NumberActions"] = NumberActionMap(["NumberActions", "OkCancelActions", "ColorActions", "ChannelSelectBaseActions", "ButtonSetupActions"], {
 			"ok": self.ok,
 			"cancel": self.exit,
 			"play": self.play_video,
 			"playpause": self.play_video,
-			"right": self.next_page,
-			"left": self.prev_page,
-			"down": self.down,
-			"up": self.up,
 			"nextBouquet": self.next_page,
 			"prevBouquet": self.prev_page,
 			"red": self.red,
@@ -356,6 +373,13 @@ class CKview(AllScreen):
 			"8": self.goto_page,
 			"9": self.goto_page,
 		}, -1)
+		self["actions"] = ActionMap(["DirectionActions"], {
+			"up": self["textpage"].pageUp,
+			"down": self["textpage"].pageDown,
+			"left": self.prev_page,
+			"right": self.next_page
+		}, -1)
+		self["actions"].setEnabled(False)
 		self.onLayoutFinish.append(self.on_layout_finished)
 
 	def on_layout_finished(self):
@@ -376,6 +400,7 @@ class CKview(AllScreen):
 			callInThread(self.fill_rlist)
 
 	def show_rlist(self):  # zeige leere Rezeptliste
+		self["actions"].setEnabled(False)
 		for index in range(ckglobals.lines_per_page):
 			self[f"pic{index}"].hide()
 			self[f"vid{index}"].hide()
@@ -383,28 +408,23 @@ class CKview(AllScreen):
 		self["Line_Bottom"].hide()
 		self["starsbg"].hide()
 		self["stars"].hide()
-		self["button_green"].hide()
-		self["button_yellow"].hide()
-		self["button_red"].show()
-		self["button_blue"].show()
 		self["label_red"].setText("Rezept zu Favoriten")
 		self["label_green"].setText("")
 		self["label_yellow"].setText("Suche")
 		self["label_blue"].setText("Ein-/Ausblenden")
 		self["label_rezeptnr"].setText(f"Rezept Nr. {self.curr_item + 1}")
 		self["label_ok"].setText("zum Rezept")
-		self["label_ok"].show()
 		self["label_1-0"].setText("")
 		self["button_1-0"].hide()
 		self["button_ok"].show()
 		self["button_play"].hide()
-		self["label_play"].hide()
-		self["scoretext"].hide()
-		self["recipetext"].hide()
+		self["label_play"].setText("")
+		self["scoretext"].setText("")
+		self["recipetext"].setText("")
 		self["textpage"].hide()
 		self["picture"].hide()
-		self["pageinfo"].show()
-		self["menu"].show()
+		self["menu"].updateList(self.kochentries)
+		self["menu"].setCurrentIndex(min(self.curr_item, max(len(self.kochentries) - 1, 0)))
 
 	def fill_rlist(self):  # fülle die Rezeptliste
 		self.grps = self.get_grps()
@@ -432,28 +452,30 @@ class CKview(AllScreen):
 			titellist.append(titel)
 			videolist.append(group.get("hasVideo", ""))
 			picurllist.append(picurl)
-			res = [index]
-			res.append(MultiContentEntryText(pos=(int(110 * ckglobals.scale), 10), size=(int(965 * ckglobals.scale), int(30 * ckglobals.scale)), font=-1, color_sel=16777215, flags=RT_HALIGN_LEFT, text=titel))  # TITLE
-			png = join(ckglobals.pic_path, f"{ckglobals.resolution}/small-{score}.png")
-			if fileExists(png):
-				res.append(MultiContentEntryPixmapAlphaTest(pos=(int(14 * ckglobals.scale), int(36 * ckglobals.scale)), size=(int(75 * ckglobals.scale), int(15 * ckglobals.scale)), png=loadPNG(png)))  # STARS
-			res.append(MultiContentEntryText(pos=(int(11 * ckglobals.scale), int(52 * ckglobals.scale)), size=(int(75 * ckglobals.scale), int(30 * ckglobals.scale)), font=1, color=16777215, color_sel=16777215,
-											flags=RT_HALIGN_CENTER, text=f"({count})"))  # COUNT
-			res.append(MultiContentEntryText(pos=(int(111 * ckglobals.scale), int(45 * ckglobals.scale)), size=(int(965 * ckglobals.scale), int(70 * ckglobals.scale)),
-											font=-1, color=10857646, color_sel=13817818, flags=RT_HALIGN_LEFT | RT_WRAP, text=text))  # TEXT
-			res.append(MultiContentEntryText(pos=(int(10 * ckglobals.scale), int(6 * ckglobals.scale)), size=(int(75 * ckglobals.scale), int(26 * ckglobals.scale)), font=0, backcolor=3899463,
-											color=16777215, backcolor_sel=15704383, color_sel=16777215, flags=RT_HALIGN_CENTER, text=time))  # TIME
-			kochentries.append(res)
+			png = join(ckglobals.pic_path, ckglobals.resolution, f"small-{score}.png")
+			kochentries.append((index, titel, loadPNG(png) if fileExists(png) else None, f"({count})", text, time))
 		self.titellist = titellist
 		self.videolist = videolist
 		self.picurllist = picurllist
+		self.kochentries = kochentries
+		self.preview_page = -1
 		self.set_prev_icons(0)
 		self.len = len(kochentries)
-		self["menu"].l.setItemHeight(int(75 * ckglobals.scale))
-		self["menu"].l.setList(kochentries)
-		self["menu"].moveToIndex(self.curr_item)
-		self.curr_item = self["menu"].getSelectedIndex()
+		self["menu"].updateList(kochentries)
+		self["menu"].setCurrentIndex(self.curr_item)
+		self.curr_item = self["menu"].getCurrentIndex()
 		self.set_prev_icons(self.curr_item - self.curr_item % ckglobals.lines_per_page)
+
+	def menu_selection_changed(self):
+		if self.current != "menu" or not self.len:
+			return
+		self.curr_item = min(self["menu"].getCurrentIndex(), self.len - 1)
+		self["label_rezeptnr"].setText(f"Rezept Nr. {self.curr_item + 1}")
+		self["pageinfo"].setText(f"Seite {self.curr_item // ckglobals.lines_per_page + 1} von {self.max_page}")
+		preview_page = self.curr_item // ckglobals.lines_per_page
+		if preview_page != self.preview_page:
+			self.preview_page = preview_page
+			self.set_prev_icons(preview_page * ckglobals.lines_per_page)
 
 	def format_datum(self, date):
 		return str(datetime.strptime(date[:10], "%Y-%m-%d").strftime("%d.%m.%Y"))
@@ -468,16 +490,13 @@ class CKview(AllScreen):
 		return "Unbekannt" if "unknown" in username else f"{username} ({rank}*)"
 
 	def show_recipe(self, ident):  # zeige leeres Rezept
+		self["actions"].setEnabled(True)
 		self.curr_id = ident
 		for index in range(ckglobals.lines_per_page):
 			self[f"pic{index}"].hide()
 			self[f"vid{index}"].hide()
 		self["picture"].hide()
-		self["menu"].hide()
-		self["button_green"].hide()
-		self["button_yellow"].hide()
-		self["button_red"].show()
-		self["button_blue"].show()
+		self["menu"].updateList([])
 		self["label_green"].setText("Rezept per Email")
 		self["label_red"].setText("Rezept zu Favoriten")
 		self["label_yellow"].setText("")
@@ -485,11 +504,11 @@ class CKview(AllScreen):
 		self["label_rezeptnr"].setText("")
 		self["label_1-0"].setText("")
 		self["button_1-0"].hide()
-		self["pageinfo"].hide()
+		self["pageinfo"].setText("")
 		self["label_ok"].setText("")
 		self["button_ok"].hide()
 		self["postvid"].hide()
-		self["label_play"].hide()
+		self["label_play"].setText("")
 		self["button_play"].hide()
 		self["Line_Bottom"].hide()
 		self["textpage"].setText("")
@@ -524,7 +543,6 @@ class CKview(AllScreen):
 		self["stars"].show()
 		self["starsbg"].show()
 		self["scoretext"].setText(scoretext)
-		self["scoretext"].show()
 		effort = ["keiner", "simpel", "normal", "pfiffig"]
 		recipetext = f"Rezept-Identnr.\t: {self.curr_id}"
 		recipetext += f"\nAufwand\t: {effort[self.rez.get('difficulty', '')]}"
@@ -542,7 +560,6 @@ class CKview(AllScreen):
 			recipetext += f"\n\n{'kcal':13}{'Eiweiß':13}{'Fett':14}{'Kohlenhydr.':14}"
 			recipetext += f"\n{kcalori:13}{protein:13}{protein:12}{carbohyd}"
 		self["recipetext"].setText(str(recipetext))
-		self["recipetext"].show()
 		self["Line_Bottom"].show()
 		self.img = self.get_img(self.curr_id)
 		if self.pic_count == 1:
@@ -649,7 +666,7 @@ class CKview(AllScreen):
 	def ok(self):
 		if hideflag and self.current == "menu":
 			self.current = "postview"
-			self.curr_item = self["menu"].getSelectedIndex()
+			self.curr_item = self["menu"].getCurrentIndex()
 			if self.grps:
 				self.show_recipe(self.grps[self.curr_item].get("id", ""))
 				callInThread(self.fill_recipe)
@@ -663,7 +680,7 @@ class CKview(AllScreen):
 			name = self.name
 			self.session.openWithCallback(self.red_return, MessageBox, f"\nRezept '{name}' zu den Favoriten hinzufügen?", MessageBox.TYPE_YESNO, timeout=10, default=True)
 		elif self.titellist:
-			self.curr_item = self["menu"].getSelectedIndex()
+			self.curr_item = self["menu"].getCurrentIndex()
 			name = self.titellist[self.curr_item]
 			self.session.openWithCallback(self.red_return, MessageBox, f"\nRezept '{name}' zu den Favoriten hinzufügen?", MessageBox.TYPE_YESNO, timeout=10, default=True)
 
@@ -675,7 +692,7 @@ class CKview(AllScreen):
 				f.write(linesep)
 			self.session.open(CKfavoriten)
 		elif answer is True:
-			self.curr_item = self["menu"].getSelectedIndex()
+			self.curr_item = self["menu"].getCurrentIndex()
 			data = f"{self.titellist[self.curr_item]}:::{self.grps[self.curr_item].get('id', '')}"
 			with open(ckglobals.favorites, "a") as f:
 				f.write(data)
@@ -805,19 +822,19 @@ class CKview(AllScreen):
 
 	def next_page(self):
 		if self.current == "menu":
-			self.curr_item = self["menu"].getSelectedIndex()
+			self.curr_item = self["menu"].getCurrentIndex()
 			offset = self.curr_item % ckglobals.lines_per_page
 			if self.curr_item + ckglobals.lines_per_page > self.len - 1 and offset > (self.len - 1) % ckglobals.lines_per_page:
 				self.curr_item = self.len - 1
-				self["menu"].moveToIndex(self.curr_item)  # springe auf letzten Eintrag der letzten Seite
+				self["menu"].setCurrentIndex(self.curr_item)  # springe auf letzten Eintrag der letzten Seite
 				self.set_prev_icons(self.curr_item - offset)
 			elif self.curr_item + ckglobals.lines_per_page > self.len - 1:
 				self.curr_item = offset
-				self["menu"].moveToIndex(self.curr_item)  # springe auf gleichen Offset der ersten Seite
+				self["menu"].setCurrentIndex(self.curr_item)  # springe auf gleichen Offset der ersten Seite
 				self.set_prev_icons(0)
 			else:
 				self.curr_item = self.curr_item + ckglobals.lines_per_page
-				self["menu"].pageDown()
+				self["menu"].setCurrentIndex(self.curr_item)
 				self.set_prev_icons(self.curr_item - offset)
 			self["label_rezeptnr"].setText(f"Rezept Nr. {self.curr_item + 1}")
 			self["pageinfo"].setText(f"Seite {int(self.curr_item // ckglobals.lines_per_page + 1)} von {self.max_page}")
@@ -826,50 +843,23 @@ class CKview(AllScreen):
 
 	def prev_page(self):
 		if self.current == "menu":
-			self.curr_item = self["menu"].getSelectedIndex()
+			self.curr_item = self["menu"].getCurrentIndex()
 			offset = self.curr_item % ckglobals.lines_per_page
 			lasttop = (self.len - 1) // ckglobals.lines_per_page * ckglobals.lines_per_page
 			if self.curr_item - ckglobals.lines_per_page < 0 and offset > (self.len - 1) % ckglobals.lines_per_page:
 				self.curr_item = self.len - 1
-				self["menu"].moveToIndex(self.curr_item)  # springe auf gleichen Offset der vorherigen Seite
+				self["menu"].setCurrentIndex(self.curr_item)  # springe auf gleichen Offset der vorherigen Seite
 				self.set_prev_icons(lasttop)
 			elif self.curr_item - ckglobals.lines_per_page < 0:
 				self.curr_item = lasttop + offset
-				self["menu"].moveToIndex(self.curr_item)  # springe auf letzten Eintrag der letzten Seite
+				self["menu"].setCurrentIndex(self.curr_item)  # springe auf letzten Eintrag der letzten Seite
 				self.set_prev_icons(lasttop)
 			else:
 				self.curr_item = self.curr_item - ckglobals.lines_per_page
-				self["menu"].pageUp()
+				self["menu"].setCurrentIndex(self.curr_item)
 				self.set_prev_icons(self.curr_item - offset)
 			self["label_rezeptnr"].setText(f"Rezept Nr. {self.curr_item + 1}")
 			self["pageinfo"].setText(f"Seite {int(self.curr_item // ckglobals.lines_per_page + 1)} von {self.max_page}")
-		else:
-			self["textpage"].pageUp()
-
-	def down(self):
-		if self.current == "menu":
-			self["menu"].down()
-			self.curr_item = self["menu"].getSelectedIndex()
-			self["label_rezeptnr"].setText(f"Rezept Nr. {self.curr_item + 1}")
-			self["pageinfo"].setText(f"Seite {int(self.curr_item // ckglobals.lines_per_page + 1)} von {self.max_page}")
-			if self.curr_item == self.len:  # neue Vorschaubilder der ersten Seite anzeigen
-				self.set_prev_icons(0)
-			if self.curr_item % ckglobals.lines_per_page == 0:  # neue Vorschaubilder der nächsten Seite anzeigen
-				self.set_prev_icons(self.curr_item)
-		else:
-			self["textpage"].pageDown()
-
-	def up(self):
-		if self.current == "menu":
-			self["menu"].up()
-			self.curr_item = self["menu"].getSelectedIndex()
-			self["label_rezeptnr"].setText(f"Rezept Nr. {self.curr_item + 1}")
-			self["pageinfo"].setText(f"Seite {int(self.curr_item // ckglobals.lines_per_page + 1)} von {self.max_page}")
-			if self.curr_item == self.len - 1:  # neue Vorschaubilder der letzte Seite anzeigen
-				d = self.len % ckglobals.lines_per_page if self.len % ckglobals.lines_per_page != 0 else ckglobals.lines_per_page
-				self.set_prev_icons(self.len - d)
-			if self.curr_item % ckglobals.lines_per_page == ckglobals.lines_per_page - 1:  # neue Vorschaubilder der vorherige Seite anzeigen
-				self.set_prev_icons(self.curr_item // ckglobals.lines_per_page * ckglobals.lines_per_page)
 		else:
 			self["textpage"].pageUp()
 
@@ -890,7 +880,7 @@ class CKview(AllScreen):
 				count = self.max_page
 				self.session.open(MessageBox, f"\nNur {count} Seiten verfügbar. Gehe zu Seite {count}.", MessageBox.TYPE_INFO, timeout=2, close_on_any_key=True)
 			self.curr_item = (count - 1) * ckglobals.lines_per_page
-			self["menu"].moveToIndex(self.curr_item)
+			self["menu"].setCurrentIndex(self.curr_item)
 			self.set_prev_icons(self.curr_item)
 			self["label_rezeptnr"].setText(f"Rezept Nr. {self.curr_item + 1}")
 			self["pageinfo"].setText(f"Seite {int(self.curr_item // ckglobals.lines_per_page + 1)} von {self.max_page}")
@@ -909,7 +899,7 @@ class CKview(AllScreen):
 
 	def yellow(self):
 		if self.current == "menu":
-			self.curr_item = self["menu"].getSelectedIndex()
+			self.curr_item = self["menu"].getCurrentIndex()
 			self.session.open(CKfavoriten, False)
 		elif self.current == "postview" and self.kom_len > 0 and self.comment:
 			self.comment = False
@@ -921,7 +911,6 @@ class CKview(AllScreen):
 	def show_comments(self):  # zeige leere Kommentaransicht
 		self["label_yellow"].setText("Beschreibung einblenden")
 		self["label_1-0"].setText("Erster/Letzer Kommentar")
-		self["label_1-0"].show()
 		self["button_1-0"].show()
 		if self.pic_count == 1:
 			self["label_ok"].setText("Vollbild")
@@ -932,7 +921,7 @@ class CKview(AllScreen):
 		else:
 			self["label_ok"].setText("")
 			self["button_ok"].hide()
-		self["pageinfo"].hide()
+		self["pageinfo"].setText("")
 		self["textpage"].setText("")
 		callInThread(self.fill_comments)
 
@@ -945,25 +934,21 @@ class CKview(AllScreen):
 			text += kom.get("text", "")
 			if ckglobals.resolution == "FHD":
 				repeat = 102 if config.plugins.chefkoch.bigfontsize.value else 109
-				text += f"\n{'_' * repeat}\n"
 			else:
 				repeat = 96 if config.plugins.chefkoch.bigfontsize.value else 105
-				text += f"\n{'_' * repeat}\n"
+			text += f"\n{'_' * repeat}\n"
 		text += "\nChefkoch.de"
 		self["textpage"].setText(text)
 
 	def show_rezept(self):  # zeige leere Rezeptansicht
-		self["button_green"].show()
 		self["label_green"].setText("Rezept per Email")
 		self["label_1-0"].setText("")
 		self["button_1-0"].hide()
 		self["pageinfo"].setText("")
 		if self.kom_len > 0:
 			self["label_yellow"].setText(f"{self.kom_len} Kommentare einblenden")
-			self["button_yellow"].show()
 		else:
 			self["label_yellow"].setText("")
-			self["button_yellow"].hide()
 		self["label_rezeptnr"].setText("")
 		if self.pic_count == 1:
 			self["label_ok"].setText("Vollbild")
@@ -978,11 +963,10 @@ class CKview(AllScreen):
 		if self.rez and self.rez.get("hasVideo", ""):
 			self["postvid"].show()
 			self["label_play"].setText("Video abspielen")
-			self["label_play"].show()
 			self["button_play"].show()
 		else:
 			self["postvid"].hide()
-			self["label_play"].hide()
+			self["label_play"].setText("")
 			self["button_play"].hide()
 		callInThread(self.fill_rezept)
 
@@ -1058,7 +1042,7 @@ class CKview(AllScreen):
 
 class CKgetNumber(AllScreen):
 	skin = """
-	<screen name="CKgetNumber" position="center,center" size="175,70" resolution="1280,720" backgroundColor="#00000000" flags="wfNoBorder" title=" ">
+	<screen name="CKgetNumber" position="center,center" size="175,70" resolution="1280,720" backgroundColor="black00" flags="wfNoBorder" title=" ">
 		<widget name="number" position="0,0" size="175,70" font="Regular;40" halign="center" valign="center" transparent="1" zPosition="1" />
 	</screen>"""
 
@@ -1104,11 +1088,11 @@ class CKgetNumber(AllScreen):
 class CKpicshow(AllScreen):
 	skin = """
 		<screen name="CKpicshow" position="center,center" size="1280,720" resolution="1280,720" title="" flags="wfNoBorder" backgroundColor="background">
-			<ePixmap position="0,0" size="1920,1080" pixmap="{picpath}/background.png" zPosition="-10" />
+			<ePixmap position="0,0" size="1280,720" pixmap="{picpath}/background.png" scaleFlags="scale" zPosition="-10" />
 			<widget source="Title" render="Label" position="center,13" size="1000,32" font="Regular; 24" transparent="1" foregroundColor="#336f3d" backgroundColor="white" halign="center" valign="center" zPosition="3" />
 			<ePixmap position="0,0" size="1280,60" pixmap="{picpath}/chefkoch.png" alphatest="blend" zPosition="1" />
 			<widget name="release" position="43,25" size="40,19" font="Regular; 14" foregroundColor="#697279" backgroundColor="white" halign="left" valign="center" transparent="1" zPosition="2" />
-			<widget name="scoretext" position="15,130" size="260,50" font="Regular;20" foregroundColor="white" backgroundColor="background" halign="left" zPosition="1" transparent="1" />
+			<widget source="scoretext" render="Label" position="15,130" size="260,50" font="Regular;20" foregroundColor="white" backgroundColor="background" halign="left" zPosition="1" transparent="1" />
 			<widget name="picture" position="270,70" size="720,540" scaleFlags="centerScaled" alphatest="blend" zPosition="1" />
 			<widget name="picindex" position="1000,70" size="250,260" foregroundColor="white" backgroundColor="background" font="Regular;22" halign="left" zPosition="1" transparent="1" />
 			<widget name="pictext" position="30,615" size="1220,48" font="Regular;22" foregroundColor="white" backgroundColor="background" halign="center" valign="center" zPosition="1" transparent="1" />
@@ -1139,8 +1123,8 @@ class CKpicshow(AllScreen):
 		self["starsbg"] = Pixmap()
 		self["stars"].hide()
 		self["starsbg"].hide()
-		self["scoretext"] = Label("")
-		self["scoretext"].hide()
+		self["scoretext"] = StaticText()
+		self["scoretext"].setText("")
 		self["picture"] = Pixmap()
 		self["picture"].show()
 		self["picindex"] = Label("")
@@ -1191,7 +1175,6 @@ class CKpicshow(AllScreen):
 		self["stars"].show()
 		self["stars"].setValue(score)
 		self["scoretext"].setText(scoretext)
-		self["scoretext"].show()
 		if self.img.get("count", "") > 0:
 			for index in range(len(self.img.get("results", ""))):
 				self.pixlist.append(self.img.get("results", "")[index].get("id", ""))
@@ -1247,7 +1230,7 @@ class CKfullscreen(AllScreen):
 	skin = """
 		<screen name="CKfullscreen" position="center,center" size="1280,720" resolution="1280,720" flags="wfNoBorder" title="" >
 			<ePixmap position="0,0" size="1280,720" pixmap="{picpath}/background.png" alphatest="blend" zPosition="-10" />
-			<eLabel position="center,center" size="960,720" backgroundColor="#000000" zPosition="1" />
+			<eLabel position="center,center" size="960,720" backgroundColor="black" zPosition="1" />
 			<widget name="picture" position="center,center" size="960,720" scaleFlags="centerScaled" alphatest="blend" zPosition="2" />
 		</screen>"""
 
@@ -1281,13 +1264,22 @@ class CKfullscreen(AllScreen):
 class CKfavoriten(AllScreen):
 	skin = """
 		<screen name="CKfavoriten" position="345,10" size="590,700" resolution="1280,720" title="" flags="wfNoBorder" backgroundColor="background">
-			<ePixmap position="0,0" size="1920,1080" pixmap="{picpath}/background.png" zPosition="-10" />
+			<ePixmap position="0,0" size="1280,720" pixmap="{picpath}/background.png" scaleFlags="scale" zPosition="-10" />
 			<widget source="Title" render="Label" position="40,14" size="510,32" font="Regular; 24" transparent="1" foregroundColor="#336f3d" backgroundColor="white" halign="center" valign="center" zPosition="3" />
 			<ePixmap position="0,0" size="590,60" pixmap="{picpath}/chefkoch.png" alphatest="blend" zPosition="1" />
 			<widget name="release" position="43,25" size="40,19" font="Regular; 14" foregroundColor="#697279" backgroundColor="white" halign="left" valign="center" transparent="1" zPosition="2" />
-			<widget name="label_red" position="40,668" size="120,24" font="Regular;18" halign="left" transparent="1" zPosition="2" />
-			<eLabel name="button_red" position="15,665" size="8,30" backgroundColor="red" zPosition="2" />
-			<widget name="favmenu" position="11,73" size="570,580" foregroundColor="white" backgroundColor="background" backgroundColorSelected="#20336f3d" font="Regular;22" itemHeight="34" selectionPixmap="{picpath}/BG_Pixmap.png" scrollbarMode="showOnDemand" halign="left" zPosition="1" transparent="1"/>
+			<widget source="label_red" render="Label" position="40,668" size="120,24" font="Regular;18" halign="left" transparent="1" zPosition="2" />
+			<widget source="button_red" render="Label" position="15,665" size="8,30" backgroundColor="red" zPosition="2" />
+			<widget source="favmenu" render="Listbox" position="11,73" size="570,580" selectionPixmap="{picpath}/BG_Pixmap.png" enableWrapAround="1" foregroundColor="white" foregroundColorSelected="white"
+				backgroundColor="background" scrollbarMode="showOnDemand" zPosition="1" transparent="1">
+				<convert type="TemplatedMultiContent">{"template": [
+					MultiContentEntryText(pos=(4,0), size=(562,34), font=0, flags=RT_HALIGN_CENTER|RT_VALIGN_CENTER|RT_ELLIPSIS, text=0)
+					],
+					"fonts": [gFont("Regular",22)],
+					"itemHeight":34
+					}
+				</convert>
+			</widget>
 			<eLabel name="Line_Left" position="9,72" size="1,582" backgroundColor="#3B8047" zPosition="3" />
 			<eLabel name="Line_Right" position="581,72" size="1,582" backgroundColor="#3B8047" zPosition="3" />
 			<eLabel name="Line_Top" position="9,72" size="572,1" backgroundColor="#3B8047" zPosition="3" />
@@ -1305,13 +1297,12 @@ class CKfavoriten(AllScreen):
 		self.favlist = []
 		self.fav_id = []
 		self.faventries = []
-		self["favmenu"] = ItemList([])
-		self["label_red"] = Label("Entferne Favorit") if self.favmode else Label("Entferne Suchbegriff")
-		self["actions"] = ActionMap(["OkCancelActions", "DirectionActions", "ColorActions", "NumberActions"], {
+		self["favmenu"] = List()
+		self["button_red"] = StaticText(" ")
+		self["label_red"] = StaticText("Entferne Favorit" if self.favmode else "Entferne Suchbegriff")
+		self["actions"] = ActionMap(["OkCancelActions", "ColorActions", "NumberActions"], {
 			"ok": self.ok,
 			"cancel": self.exit,
-			"down": self.down,
-			"up": self.up,
 			"red": self.red,
 			"0": self.move2end,
 			"1": self.move2first
@@ -1326,9 +1317,7 @@ class CKfavoriten(AllScreen):
 			self.setTitle("Chefkoch - letzte Suchbegriffe")
 			self.favoriten = ckglobals.searches
 			titel = ">>> Neue Suche <<<"
-			res = [""]
-			res.append(MultiContentEntryText(pos=(4, 0), size=(int(570 * ckglobals.scale), int(34 * ckglobals.scale)), font=-2, flags=RT_HALIGN_CENTER | RT_VALIGN_CENTER, text=titel))
-			self.faventries.append(res)
+			self.faventries.append((titel,))
 			self.favlist.append(titel)
 			self.fav_id.append("")
 		if fileExists(self.favoriten):
@@ -1337,13 +1326,10 @@ class CKfavoriten(AllScreen):
 					if ":::" in line:
 						favline = line.split(":::")
 						titel = str(favline[0])
-						res = [""]
-						res.append(MultiContentEntryText(pos=(4, 0), size=(int(570 * ckglobals.scale), int(34 * ckglobals.scale)), font=-2, flags=RT_HALIGN_CENTER | RT_VALIGN_CENTER, text=titel))
-						self.faventries.append(res)
+						self.faventries.append((titel,))
 						self.favlist.append(titel)
 						self.fav_id.append(favline[1].replace("\n", ""))
-		self["favmenu"].l.setList(self.faventries)
-		self["favmenu"].l.setItemHeight(int(34 * ckglobals.scale))
+		self["favmenu"].updateList(self.faventries)
 
 	def ok(self):
 		self.curr_item = self.get_index(self["favmenu"])
@@ -1447,13 +1433,7 @@ class CKfavoriten(AllScreen):
 		self.make_fav()
 
 	def get_index(self, list):
-		return list.getSelectedIndex()
-
-	def down(self):
-		self["favmenu"].down()
-
-	def up(self):
-		self["favmenu"].up()
+		return list.getCurrentIndex()
 
 	def exit(self):
 		if ckglobals.alpha and not hideflag:
@@ -1462,40 +1442,36 @@ class CKfavoriten(AllScreen):
 		self.close()
 
 
-class ItemList(MenuList):
-	def __init__(self, items, enableWrapAround=True):
-		MenuList.__init__(self, items, enableWrapAround, eListboxPythonMultiContent)
-		fontoffset = 2 if config.plugins.chefkoch.bigfontsize.value else 0
-		self.l.setFont(-2, gFont("Regular", int(24 * ckglobals.scale)))
-		self.l.setFont(-1, gFont("Regular", int((22 + fontoffset) * ckglobals.scale)))
-		self.l.setFont(0, gFont("Regular", int((20 + fontoffset) * ckglobals.scale)))
-		self.l.setFont(1, gFont("Regular", int((18 + fontoffset) * ckglobals.scale)))
-		self.l.setFont(2, gFont("Regular", int((16 + fontoffset) * ckglobals.scale)))
-
-
 class CKmain(AllScreen):
 	skin = """
 		<screen name="CKmain" position="345,10" size="590,700" resolution="1280,720" title="kontaktiere den Server..." flags="wfNoBorder" backgroundColor="background">
-			<ePixmap position="0,0" size="1920,1080" pixmap="{picpath}/background.png" zPosition="-10" transparent="1"/>
+			<ePixmap position="0,0" size="1280,720" pixmap="{picpath}/background.png" scaleFlags="scale" zPosition="-10" transparent="1" />
 			<widget source="Title" render="Label" position="60,14" size="490,32" font="Regular; 24" transparent="1" foregroundColor="#336f3d" backgroundColor="white" halign="center" valign="center" zPosition="3" />
 			<ePixmap position="0,0" size="590,60" pixmap="{picpath}/chefkoch.png"  zPosition="1" />
 			<widget name="release" position="43,25" size="40,19" font="Regular; 14" foregroundColor="#697279" backgroundColor="white" halign="left" valign="center" transparent="1" zPosition="2" />
 			<widget name="totalrecipes" position="460,43" size="120,16" font="Regular; 14" foregroundColor="#697279" backgroundColor="white" halign="right" transparent="1" zPosition="2" />
-			<widget name="mainmenu" position="10,73" size="570,580" font="Regular;22" itemHeight="34" selectionPixmap="{picpath}/BG_Pixmap.png" scrollbarMode="showNever" foregroundColor="white" backgroundColor="background" backgroundColorSelected="#20336f3d" zPosition="2" transparent="1"/>
-			<widget name="secondmenu" position="10,73" size="570,580" font="Regular;22" itemHeight="34" selectionPixmap="{picpath}/BG_Pixmap.png" scrollbarMode="showNever" foregroundColor="white" backgroundColor="background" backgroundColorSelected="#20336f3d" zPosition="2" transparent="1"/>
-			<widget name="thirdmenu" position="10,73" size="570,580" font="Regular;22" itemHeight="34" selectionPixmap="{picpath}/BG_Pixmap.png" scrollbarMode="showOnDemand" scrollbarBorderWidth="2" scrollbarWidth="10" scrollbarForegroundColor="#b5d7bb" scrollbarBorderColor="#336F3D" foregroundColor="white" backgroundColor="background" backgroundColorSelected="#20336f3d" zPosition="2" transparent="1"/>
+			<widget source="menulist" render="Listbox" position="10,73" size="570,580" selectionPixmap="{picpath}/BG_Pixmap.png" enableWrapAround="1" scrollbarMode="showOnDemand" scrollbarBorderWidth="2" scrollbarWidth="10"
+				scrollbarForegroundColor="#b5d7bb" scrollbarBorderColor="#336F3D" foregroundColor="white" foregroundColorSelected="white" backgroundColor="background" zPosition="2" transparent="1">
+				<convert type="TemplatedMultiContent">{"template": [
+					MultiContentEntryText(pos=(0,1), size=(570,30), font=0, flags=RT_HALIGN_CENTER|RT_VALIGN_CENTER|RT_ELLIPSIS, text=0)
+					],
+					"fonts": [gFont("Regular",22)],
+					"itemHeight":34
+					}
+				</convert>
+			</widget>
 			<eLabel position="12,632" size="566,20" font="Regular; 14" text="***  Authors: Kashmir(†), Mr.Servo, jbleyel - skinned by stein17  ***" foregroundColor="grey" backgroundColor="background" halign="center" valign="center" transparent="1" zPosition="4" />
-			<widget name="label_red" position="30,668" size="90,24" font="Regular;18" halign="left" transparent="1" zPosition="2" />
-			<widget name="label_green" position="140,668" size="90,24" font="Regular;18" halign="left" transparent="1" zPosition="2" />
-			<widget name="label_yellow" position="250,668" size="90,24" font="Regular;18" halign="left" transparent="1" zPosition="2" />
-			<widget name="label_blue" position="360,668" size="140,24" font="Regular;18" halign="left" transparent="1" zPosition="2" />
+			<widget source="label_red" render="Label" position="30,668" size="90,24" font="Regular;18" halign="left" transparent="1" zPosition="2" />
+			<widget source="label_green" render="Label" position="140,668" size="90,24" font="Regular;18" halign="left" transparent="1" zPosition="2" />
+			<widget source="label_yellow" render="Label" position="250,668" size="90,24" font="Regular;18" halign="left" transparent="1" zPosition="2" />
+			<widget source="label_blue" render="Label" position="360,668" size="140,24" font="Regular;18" halign="left" transparent="1" zPosition="2" />
 			<eLabel name="Rahmen_grün" position="515,668" size="60,24" backgroundColor="#3B8047" zPosition="1" />
 			<eLabel name="Füllung" position="517,670" size="56,20" backgroundColor="#c1d2c7" zPosition="2" />
 			<eLabel text="Menü" position="517,670" size="56,20" zPosition="5" font="Regular; 14" halign="center" valign="center" foregroundColor="black" backgroundColor="grey" transparent="1" />
-			<eLabel name="button_red" position="15,665" size="8,30" backgroundColor="red" zPosition="2" />
-			<eLabel name="button_green" position="125,665" size="8,30" backgroundColor="green" zPosition="2" />
-			<eLabel name="button_yellow" position="235,665" size="8,30" backgroundColor="yellow" zPosition="2" />
-			<eLabel name="button_blue" position="345,665" size="8,30" backgroundColor="blue" zPosition="2" />
+			<widget source="button_red" render="Label" position="15,665" size="8,30" backgroundColor="red" transparent="0" zPosition="2" />
+			<widget source="button_green" render="Label" position="125,665" size="8,30" backgroundColor="green" transparent="0" zPosition="2" />
+			<widget source="button_yellow" render="Label" position="235,665" size="8,30" backgroundColor="yellow" transparent="0" zPosition="2" />
+			<widget source="button_blue" render="Label" position="345,665" size="8,30" backgroundColor="blue" transparent="0" zPosition="2" />
 			<eLabel name="Line_Left" position="9,72" size="1,582" backgroundColor="#3B8047" zPosition="3" />
 			<eLabel name="Line_Right" position="581,72" size="1,582" backgroundColor="#3B8047" zPosition="3" />
 			<eLabel name="Line_Top" position="9,72" size="572,1" backgroundColor="#3B8047" zPosition="3" />
@@ -1514,22 +1490,22 @@ class CKmain(AllScreen):
 		self.main_id = None
 		self.rezeptfile = "/tmp/Rezept.html"
 		self.actmenu = "mainmenu"
-		self["mainmenu"] = ItemList([])
-		self["secondmenu"] = ItemList([])
-		self["thirdmenu"] = ItemList([])
-		self["label_red"] = Label("Favorit")
-		self["label_green"] = Label("Zufall")
-		self["label_yellow"] = Label("Suche")
-		self["label_blue"] = Label("Ein-/Ausblenden")
+		self["menulist"] = List()
+		self.mainmenuindex = 0
+		self.secondmenuindex = 0
+		self["label_red"] = StaticText("Favorit")
+		self["label_green"] = StaticText("Zufall")
+		self["label_yellow"] = StaticText("Suche")
+		self["label_blue"] = StaticText("Ein-/Ausblenden")
+		self["button_red"] = StaticText(" ")
+		self["button_green"] = StaticText(" ")
+		self["button_yellow"] = StaticText(" ")
+		self["button_blue"] = StaticText(" ")
 		self["release"] = Label(ckglobals.release)
 		self["totalrecipes"] = Label("")
-		self["actions"] = ActionMap(["OkCancelActions", "DirectionActions", "ColorActions", "ChannelSelectBaseActions", "InfoActions", "MenuActions"], {
+		self["actions"] = ActionMap(["OkCancelActions", "ColorActions", "ChannelSelectBaseActions", "InfoActions", "MenuActions"], {
 			"ok": self.ok,
 			"cancel": self.exit,
-			"right": self.right_down,
-			"left": self.left_up,
-			"down": self.down,
-			"up": self.up,
 			"nextBouquet": self.zap,
 			"prevBouquet": self.zap,
 			"red": self.fav,
@@ -1549,8 +1525,9 @@ class CKmain(AllScreen):
 		callInThread(self.make_main_menu)
 
 	def ok(self):
-		self.curr_item = self.get_index(self[self.actmenu])
+		self.curr_item = self["menulist"].getCurrentIndex()
 		if self.actmenu == "mainmenu" and self.main_id:
+			self.mainmenuindex = self.curr_item
 			mainId = self.main_id[self.curr_item]
 			if mainId == "998":  # Id für CK-Video Hauptmenü (= Secondmenu)
 				self.ck_video = True
@@ -1570,6 +1547,7 @@ class CKmain(AllScreen):
 					self.session.openWithCallback(self.select_main_menu, CKview, query, f"'{self.mainmenutitle[self.curr_item]}'", sort, False, False)
 
 		elif self.actmenu == "secondmenu":
+			self.secondmenuindex = self.curr_item
 			secondId = self.second_id[self.curr_item]
 			if self.curr_kat and list(filter(lambda index: index["parentId"] == secondId, self.curr_kat)):
 				callInThread(self.make_third_menu, secondId)
@@ -1605,15 +1583,12 @@ class CKmain(AllScreen):
 		self.main_id = []
 		self.curr_kat = self.get_nkat()
 		for index in range(len(self.curr_kat)):
-			res = [""]
 			if self.curr_kat[index]["level"] == 1:
-				res.append(MultiContentEntryText(pos=(0, 1), size=(int(570 * ckglobals.scale), int(30 * ckglobals.scale)), font=-2, flags=RT_HALIGN_CENTER, text=str(self.curr_kat[index]["descriptionText"])))
-				self.mainmenulist.append(res)
+				self.mainmenulist.append((str(self.curr_kat[index]["descriptionText"]),))
 				self.mainmenuquery.append(self.curr_kat[index]["descriptionText"])
 				self.mainmenutitle.append(self.curr_kat[index]["descriptionText"])
 				self.main_id.append(self.curr_kat[index]["id"])
-		self["mainmenu"].l.setList(self.mainmenulist)
-		self["mainmenu"].l.setItemHeight(int(34 * ckglobals.scale))
+		self["menulist"].updateList(self.mainmenulist)
 		self.select_main_menu()
 
 	def make_second_menu(self, parentId):
@@ -1624,16 +1599,12 @@ class CKmain(AllScreen):
 		self.parent_id = parentId
 		if self.curr_kat:
 			for index in range(len(self.curr_kat)):
-				res = [""]
 				if self.curr_kat[index]["level"] == 2 and self.curr_kat[index]["parentId"] == parentId:
-					res.append(MultiContentEntryText(pos=(0, 1), size=(int(570 * ckglobals.scale), int(30 * ckglobals.scale)), font=-2, flags=RT_HALIGN_CENTER, text=str(self.curr_kat[index]["descriptionText"])))
-					self.secondmenulist.append(res)
+					self.secondmenulist.append((str(self.curr_kat[index]["descriptionText"]),))
 					self.secondmenuquery.append(self.curr_kat[index]["descriptionText"])
 					self.secondmenutitle.append(self.curr_kat[index]["descriptionText"])
 					self.second_id.append(self.curr_kat[index]["id"])
-			self["secondmenu"].l.setList(self.secondmenulist)
-			self["secondmenu"].l.setItemHeight(int(34 * ckglobals.scale))
-			self["secondmenu"].moveToIndex(0)
+			self.secondmenuindex = 0
 			for currkat in self.curr_kat:
 				if currkat["id"] == parentId:
 					self.setTitle(currkat["title"])
@@ -1646,15 +1617,12 @@ class CKmain(AllScreen):
 		self.thirdmenutitle = []
 		if self.curr_kat:
 			for currkat in self.curr_kat:
-				res = [""]
 				if currkat["level"] == 3 and currkat["parentId"] == parentId:
-					res.append(MultiContentEntryText(pos=(0, 1), size=(int(570 * ckglobals.scale), int(30 * ckglobals.scale)), font=-2, flags=RT_HALIGN_CENTER, text=currkat["descriptionText"]))
-					self.thirdmenulist.append(res)
+					self.thirdmenulist.append((currkat["descriptionText"],))
 					self.thirdmenuquery.append(currkat["descriptionText"])
 					self.thirdmenutitle.append(currkat["descriptionText"])
-			self["thirdmenu"].l.setList(self.thirdmenulist)
-			self["thirdmenu"].l.setItemHeight(int(34 * ckglobals.scale))
-			self["thirdmenu"].moveToIndex(0)
+			self["menulist"].updateList(self.thirdmenulist)
+			self["menulist"].setCurrentIndex(0)
 			for currkat in self.curr_kat:
 				if currkat["id"] == parentId:
 					self.setTitle(currkat["title"])
@@ -1757,47 +1725,20 @@ class CKmain(AllScreen):
 
 	def select_main_menu(self):
 		self.actmenu = "mainmenu"
-		self["mainmenu"].show()
-		self["secondmenu"].hide()
-		self["thirdmenu"].hide()
-		self["mainmenu"].selectionEnabled(1)
-		self["secondmenu"].selectionEnabled(0)
-		self["thirdmenu"].selectionEnabled(0)
+		self["menulist"].updateList(self.mainmenulist)
+		self["menulist"].setCurrentIndex(self.mainmenuindex)
 
 	def select_second_menu(self):
 		if len(self.secondmenulist) > 0:
 			self.actmenu = "secondmenu"
-			self["mainmenu"].hide()
-			self["secondmenu"].show()
-			self["thirdmenu"].hide()
-			self["mainmenu"].selectionEnabled(0)
-			self["secondmenu"].selectionEnabled(1)
-			self["thirdmenu"].selectionEnabled(0)
+			self["menulist"].updateList(self.secondmenulist)
+			self["menulist"].setCurrentIndex(self.secondmenuindex)
 
 	def select_third_menu(self):
 		if len(self.thirdmenulist) > 0:
 			self.actmenu = "thirdmenu"
-			self["mainmenu"].hide()
-			self["secondmenu"].hide()
-			self["thirdmenu"].show()
-			self["mainmenu"].selectionEnabled(0)
-			self["secondmenu"].selectionEnabled(0)
-			self["thirdmenu"].selectionEnabled(1)
-
-	def up(self):
-		self[self.actmenu].up()
-
-	def down(self):
-		self[self.actmenu].down()
-
-	def left_up(self):
-		self[self.actmenu].pageUp()
-
-	def right_down(self):
-		self[self.actmenu].pageDown()
-
-	def get_index(self, list):
-		return list.getSelectedIndex()
+			self["menulist"].updateList(self.thirdmenulist)
+			self["menulist"].setCurrentIndex(0)
 
 	def yellow(self):
 		self.session.open(CKfavoriten, False)
